@@ -18,14 +18,37 @@ import {
 } from '../data/season'
 import { POSTS, TOURNAMENTS } from '../data/community'
 import { CountUp, rise, stagger, TeamBadge } from '../components/ui'
+import { useLive } from '../live/LiveProvider'
+import { derive } from '../live/engine'
 
 const VolleyBall3D = lazy(() => import('../three/VolleyBall3D'))
 
 function Ticker() {
   const { matches } = useStore()
+  const { games } = useLive()
+  const onAir = games.filter((g) => g.status === 'live')
   const recent = matches.filter((m) => m.sets).slice(-14).reverse()
-  if (!recent.length) return null
-  const row = recent.map((m) => {
+  if (!recent.length && !onAir.length) return null
+  const liveRow = onAir.map((g) => {
+    const m = matches.find((x) => x.id === g.matchId)!
+    const st = derive(g.rallies)
+    return (
+      <Link key={'live-' + m.id} to="/live" className="tick tick-live">
+        <span className="tick-league">Live</span>
+        <span>{TEAM_BY_ID.get(m.home)!.name}</span>
+        <b className="tick-score">
+          {st.setsWon[0]}:{st.setsWon[1]}
+        </b>
+        {!st.decided && (
+          <small className="tick-set">
+            ({st.current[0]}:{st.current[1]})
+          </small>
+        )}
+        <span>{TEAM_BY_ID.get(m.away)!.name}</span>
+      </Link>
+    )
+  })
+  const row = [...liveRow, ...recent.map((m) => {
     const [h, a] = setsWon(m.sets!)
     return (
       <Link key={m.id} to={`/tabellen/${m.league}`} className="tick">
@@ -37,12 +60,12 @@ function Ticker() {
         <span className={a > h ? 'w' : ''}>{TEAM_BY_ID.get(m.away)!.name}</span>
       </Link>
     )
-  })
+  })]
   return (
-    <div className="ticker" aria-label="Neueste Ergebnisse">
-      <span className="ticker-label">
-        <i className="live-dot" /> Ergebnisse
-      </span>
+    <div className="ticker" aria-label={onAir.length ? 'Live-Spiele und neueste Ergebnisse' : 'Neueste Ergebnisse'}>
+      <Link to="/live" className="ticker-label">
+        <i className="live-dot" /> {onAir.length ? `${onAir.length} live` : 'Ergebnisse'}
+      </Link>
       <div className="ticker-track">
         <div className="ticker-move">
           {row}
@@ -98,6 +121,7 @@ function Hero() {
 
 function ThisWeek() {
   const { matches } = useStore()
+  const live = useLive()
   const [league, setLeague] = useState<string>('alle')
   const [showAll, setShowAll] = useState(false)
   const end = new Date(NOW)
@@ -160,6 +184,11 @@ function ThisWeek() {
                         </Link>
                       </span>
                       <span className="fixture-meta">
+                        {live.game(m.id)?.status === 'live' && (
+                          <Link to="/live" className="live-pill">
+                            <i className="live-dot" /> Live
+                          </Link>
+                        )}
                         <span className="league-tag">L{m.league}</span>
                         <span className="venue">
                           <MapPin size={13} /> {m.venue}

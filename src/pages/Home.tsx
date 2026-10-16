@@ -82,9 +82,15 @@ function Showreel() {
   const [ready, setReady] = useState(false)
   const [paused, setPaused] = useState(false)
   const ref = useRef<HTMLVideoElement>(null)
+  const [poster, setPoster] = useState(false)
   const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => setPoster(true)
+    img.src = 'showreel/showreel-poster.jpg'
+  }, [])
   return (
-    <motion.figure className={`wrap showreel${ready ? ' is-ready' : ''}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}>
+    <motion.figure className={`wrap showreel${ready || poster ? ' is-ready' : ''}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}>
       <div className="showreel-frame">
         <div className="showreel-placeholder" aria-hidden>
           <svg viewBox="0 0 180 90" preserveAspectRatio="xMidYMid slice">
@@ -111,7 +117,7 @@ function Showreel() {
         </video>
         <figcaption>
           <span className="eyebrow">Saisonfilm</span>
-          <span>{ready ? '20 Sekunden Freizeitliga' : 'Der Film zur Saison kommt in Kürze'}</span>
+          <span>{ready || poster ? 'Die Freizeitliga in 18 Sekunden' : 'Der Film zur Saison kommt in Kürze'}</span>
         </figcaption>
         {ready && (
           <button

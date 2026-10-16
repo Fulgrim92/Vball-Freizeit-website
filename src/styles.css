@@ -4649,7 +4649,7 @@ td.c-pts b {
   border-radius: var(--r-lg);
   border: 1px solid var(--line);
   background: var(--surface-solid);
-  height: clamp(200px, 22vw, 290px);
+  height: clamp(240px, 34vw, 440px);
   max-width: 100%;
 }
 .showreel-frame video {
@@ -4715,6 +4715,10 @@ td.c-pts b {
   font-size: 0.92rem;
   color: var(--fg-2);
   background: linear-gradient(0deg, color-mix(in srgb, var(--bg) 80%, transparent), transparent);
+}
+/* the film carries its own titles, so the caption only labels the placeholder */
+.showreel.is-ready figcaption {
+  display: none;
 }
 .showreel-frame figcaption .eyebrow {
   margin: 0;

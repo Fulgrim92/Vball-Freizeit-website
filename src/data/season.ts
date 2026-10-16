@@ -1,4 +1,5 @@
-import { hashString, mulberry32, pick, shuffle } from '../lib/random'
+import { hashString, mulberry32 } from '../lib/random'
+import { STAFFELLEITUNG, TEAM_SOURCE, type TeamSource } from './teams'
 
 export type SetScore = [number, number]
 
@@ -6,19 +7,16 @@ export interface League {
   id: string
   tier: number
   label: string
+  lead: string
 }
 
-export interface Team {
+export interface Team extends TeamSource {
   id: string
-  name: string
   short: string
-  league: string
   hue: number
   strength: number
+  /** first hall slot, used for home games */
   hall: { day: number; time: string; venue: string }
-  contact: string
-  founded: number
-  members: number
 }
 
 export interface Match {
@@ -43,50 +41,9 @@ const LEAGUE_IDS = ['1', '2A', '2B', '3A', '3B', '3C', '4A', '4B', '4C', '4D', '
 export const LEAGUES: League[] = LEAGUE_IDS.map((id) => ({
   id,
   tier: Number(id[0]),
-  label: id === '1' ? 'Liga 1' : `Liga ${id}`,
+  label: `Liga ${id}`,
+  lead: STAFFELLEITUNG[id],
 }))
-
-export const TEAMS_PER_TIER: Record<number, number> = { 1: 8, 2: 8, 3: 8, 4: 7, 5: 6 }
-
-// Liga 1 uses the team names from the real 2026/27 table; every other name is invented.
-const LIGA1 = ['Optisch Überlegen', 'Spartak Au', 'Amore Calzone', 'SUPER SMASH', 'ESV München I', 'Kaboom', '6 für Cuba', 'Die Gallier']
-
-const DISTRICTS = [
-  'Schwabing', 'Giesing', 'Haidhausen', 'Pasing', 'Sendling', 'Bogenhausen', 'Neuhausen', 'Laim', 'Moosach',
-  'Milbertshofen', 'Trudering', 'Perlach', 'Maxvorstadt', 'Westend', 'Hadern', 'Freimann', 'Riem', 'Aubing',
-  'Solln', 'Thalkirchen', 'Nymphenburg', 'Lehel', 'Ramersdorf', 'Fürstenried', 'Feldmoching', 'Allach',
-  'Harlaching', 'Obermenzing', 'Unterföhring', 'Ismaning', 'Garching', 'Unterhaching', 'Ottobrunn', 'Neubiberg',
-  'Gräfelfing', 'Planegg', 'Karlsfeld', 'Haar', 'Aschheim', 'Kirchheim', 'Au',
-]
-const CLUBS = ['TSV', 'SV', 'DJK', 'FT', 'TuS', 'SC', 'ESV', 'MTV', 'PSV', 'SpVgg']
-const ROMAN = ['', ' II', ' III', ' IV']
-const FUN = [
-  'Netzroller', 'Blockparty', 'Baggerseen', 'Die Pritschen', 'Ballverliebt', 'Aufschlagfehler', 'Hechtsuppe',
-  'Satzball', 'Libero Lounge', 'Schmetterlinge', 'Netzwerk', 'Die Annahmeprofis', 'Volley Vegas', 'Spätschicht',
-  'Mittwochsmischung', 'Sandkastenhelden', 'Die Netzläufer', 'Feierabendbagger', 'Ballorama', 'Punktlandung',
-  'Block & Roll', 'Hallenkobolde', 'Die Zuspieler', 'Mixed Pickles', 'Aufschlagsalat', 'Die Dienstagsrunde',
-  'Volleyholics', 'Zweiter Ball', 'Gute Annahme', 'Rotation Ost', 'Die Nachtschicht', 'Isarbagger',
-  'Würmtal Wildcats', 'Lochhausen Lions', 'Flying Pretzels', 'Weißwurst Smash', 'Brezn & Block', 'Kein Plan B',
-  'Die Netzflüsterer', 'Lauter Lobs', 'Ballstars', 'Satzgewinn', 'Hand am Netz', 'Die Wühlmäuse', 'Tiefe Bälle',
-  'Isar Spikers', 'Stammtisch United', 'Blockbuster', 'Pritschmeister', 'Die Sechser', 'Netzhoppers', 'Volleytreffer',
-  'Ballerinas & Bagger', 'Oktoberblock', 'Schwarze Linie', 'Punkt für Punkt', 'Die Läufer', 'Plan Volley',
-  'Zuspiel Zentrale', 'Baggerbande', 'Die Rückraumler', 'Grüne Welle Mixed', 'Kurze Diagonale',
-]
-const FIRST = [
-  'Lena', 'Jonas', 'Sophie', 'Felix', 'Marie', 'Lukas', 'Anna', 'Maximilian', 'Laura', 'Paul', 'Julia', 'Tobias',
-  'Hannah', 'Simon', 'Clara', 'Moritz', 'Lea', 'David', 'Katharina', 'Florian', 'Johanna', 'Sebastian', 'Miriam',
-  'Alexander', 'Theresa', 'Benedikt', 'Nina', 'Quirin', 'Vroni', 'Kilian', 'Selin', 'Emre', 'Aylin', 'Mateo',
-]
-const LAST = [
-  'Huber', 'Bauer', 'Wagner', 'Maier', 'Gruber', 'Hofmann', 'Brandl', 'Schmid', 'Fischer', 'Weber', 'Ostermeier',
-  'Lechner', 'Kraus', 'Seidl', 'Pichler', 'Zimmermann', 'Winkler', 'Steiner', 'Yilmaz', 'Novak', 'Rossi', 'Berger',
-]
-const HALL = ['Turnhalle', 'Sporthalle', 'Dreifachhalle', 'Schulturnhalle']
-const TIMES = ['19:00', '19:30', '20:00', '20:00', '20:30']
-
-export function randomPerson(rng: () => number) {
-  return `${pick(rng, FIRST)} ${pick(rng, LAST)}`
-}
 
 function shortName(name: string) {
   const words = name.replace(/[^\p{L}\d ]/gu, '').split(/\s+/).filter(Boolean)
@@ -103,40 +60,19 @@ function slug(s: string) {
 }
 
 function buildTeams(): Team[] {
-  const rng = mulberry32(2026)
-  const fun = shuffle(rng, FUN)
-  const districts = shuffle(rng, DISTRICTS)
-  const used = new Set<string>()
-  const teams: Team[] = []
-  let fi = 0
-  let di = 0
-  for (const league of LEAGUES) {
-    const n = TEAMS_PER_TIER[league.tier]
-    for (let i = 0; i < n; i++) {
-      let name: string
-      if (league.id === '1') name = LIGA1[i]
-      else if (rng() < 0.32) {
-        do name = `${pick(rng, CLUBS)} ${districts[di++ % districts.length]}${pick(rng, ROMAN)}`
-        while (used.has(name))
-      } else name = fun[fi++ % fun.length]
-      used.add(name)
-      const district = / Au( |$)/.test(name) ? 'Au' : districts[(di + i * 7) % districts.length]
-      teams.push({
-        id: slug(name),
-        name,
-        short: shortName(name),
-        league: league.id,
-        hue: Math.floor(rng() * 360),
-        // lower tiers are weaker on average, with plenty of overlap
-        strength: 0.62 - league.tier * 0.035 + rng() * 0.14,
-        hall: { day: Math.floor(rng() * 5), time: pick(rng, TIMES), venue: `${pick(rng, HALL)} ${district}` },
-        contact: randomPerson(rng),
-        founded: 1998 + Math.floor(rng() * 27),
-        members: 9 + Math.floor(rng() * 9),
-      })
+  // Strength is invented: it only drives the simulated results.
+  return TEAM_SOURCE.map((t) => {
+    const rng = mulberry32(hashString(t.name))
+    const tier = Number(t.league[0])
+    return {
+      ...t,
+      id: slug(t.name),
+      short: shortName(t.name),
+      hue: Math.floor(rng() * 360),
+      strength: 0.62 - tier * 0.035 + rng() * 0.14,
+      hall: { day: t.slots[0].day, time: t.slots[0].from, venue: t.venues[0] ?? 'Halle nicht angegeben' },
     }
-  }
-  return teams
+  })
 }
 
 export const TEAMS = buildTeams()

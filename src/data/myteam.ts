@@ -8,7 +8,7 @@ export interface Player {
   name: string
   number: number
   position: 'Zuspiel' | 'Außen' | 'Mitte' | 'Diagonal' | 'Libero'
-  rights: ('Ergebnisse' | 'Team bearbeiten' | 'Spielverlegung' | 'Rechte vergeben')[]
+  rights: Right[]
   office?: string
   /** how reliably this person shows up, used to fake history */
   reliability: number
@@ -22,12 +22,19 @@ export interface Session {
   focus: string
 }
 
-export const DEMO_ACCOUNT = { username: 'demo', password: 'volley' }
+export type Right = 'Ergebnisse' | 'Team bearbeiten' | 'Spielverlegung' | 'Rechte vergeben'
+export const ALL_RIGHTS: Right[] = ['Ergebnisse', 'Team bearbeiten', 'Spielverlegung', 'Rechte vergeben']
+
+/** Two demo logins: one with every right, one without, to show how rights gate result entry. */
+export const DEMO_ACCOUNTS = [
+  { username: 'demo', password: 'volley', player: 'p1', label: 'Kapitänin, alle Rechte' },
+  { username: 'spieler', password: 'volley', player: 'p3', label: 'Spielerin, ohne Rechte' },
+]
 
 export const MY_TEAM_ID = 'spartak-au'
 
 export const SQUAD: Player[] = [
-  { id: 'p1', name: 'Lena Hoffmann', number: 7, position: 'Zuspiel', rights: ['Ergebnisse', 'Team bearbeiten', 'Spielverlegung', 'Rechte vergeben'], office: 'Mannschaftsverantwortliche', reliability: 0.92 },
+  { id: 'p1', name: 'Lena Hoffmann', number: 7, position: 'Zuspiel', rights: ['Ergebnisse', 'Team bearbeiten', 'Spielverlegung', 'Rechte vergeben'], office: 'Kapitänin', reliability: 0.92 },
   { id: 'p2', name: 'Jonas Brandl', number: 4, position: 'Außen', rights: ['Ergebnisse'], office: 'Stellvertretung', reliability: 0.85 },
   { id: 'p3', name: 'Aylin Yilmaz', number: 11, position: 'Mitte', rights: [], reliability: 0.78 },
   { id: 'p4', name: 'Moritz Seidl', number: 9, position: 'Diagonal', rights: [], reliability: 0.64 },
@@ -42,19 +49,17 @@ export const SQUAD: Player[] = [
 
 export const ME = SQUAD[0]
 
-const SLOTS = [
-  { day: 1, start: [20, 0], end: '22:00', venue: 'Sporthalle Au, Halle 2' },
-  { day: 3, start: [19, 30], end: '21:30', venue: 'Turnhalle Giesing' },
-]
+// Spartak Au's real hall time; everything about the squad below is example data.
+const SLOTS = [{ day: 3, start: [20, 0], end: '22:00', venue: 'Pestalozzi-Gymnasium, Eduard-Schmid-Str. 1' }]
 const FOCUS = ['Annahme & Abwehr', 'Aufschlagserie', 'Angriff über Außen', 'Block & Sicherung', 'Spielzüge 5-1', 'Freies Spiel', 'Läufer-System', 'Kondition & Sprungkraft']
 
 function sessionsAround(now: Date, before: number, after: number): { past: Session[]; next: Session[] } {
   const past: Session[] = []
   const next: Session[] = []
   const start = new Date(now)
-  start.setDate(start.getDate() - before * 4)
+  start.setDate(start.getDate() - before * 7 - 7)
   start.setHours(0, 0, 0, 0)
-  for (let i = 0; i < before * 4 + after * 4; i++) {
+  for (let i = 0; i < before * 7 + 7 + after * 7 + 7; i++) {
     const d = new Date(start)
     d.setDate(d.getDate() + i)
     const weekday = (d.getDay() + 6) % 7

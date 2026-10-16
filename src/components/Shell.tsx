@@ -16,10 +16,12 @@ import {
   Table2,
   UserRound,
   Info,
+  Menu,
+  X,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { LEAGUES, TEAMS } from '../data/season'
-import { TeamBadge } from './ui'
+import { Segmented, TeamBadge } from './ui'
 
 export function Logo() {
   return (
@@ -62,8 +64,24 @@ function ThemeSwitch() {
   )
 }
 
+function ThemeSegment() {
+  const { theme, setTheme } = useStore()
+  return (
+    <Segmented
+      id="sheet-theme"
+      value={theme}
+      onChange={setTheme}
+      options={[
+        { value: 'system', label: 'System' },
+        { value: 'light', label: 'Hell' },
+        { value: 'dark', label: 'Dunkel' },
+      ]}
+    />
+  )
+}
+
 export function Header() {
-  const { user, setPaletteOpen, logout } = useStore()
+  const { user, setPaletteOpen, logout, setSheetOpen } = useStore()
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
   const loc = useLocation()
@@ -81,7 +99,7 @@ export function Header() {
         <Logo />
         <nav className="main-nav" aria-label="Hauptnavigation">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className="nav-link">
+            <NavLink key={n.to} to={n.to} end={n.end} className="nav-link" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               {({ isActive }) => (
                 <>
                   {isActive && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
@@ -98,10 +116,13 @@ export function Header() {
             <kbd>⌘K</kbd>
           </button>
           <ThemeSwitch />
+          <button className="icon-btn menu-btn" onClick={() => setSheetOpen(true)} aria-label="Menü öffnen">
+            <Menu size={18} />
+          </button>
           {user ? (
             <div className="user-menu">
               <button className="avatar-btn" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label="Konto">
-                <span className="avatar">LH</span>
+                <span className="avatar">{user.name.split(' ').map((p) => p[0]).join('')}</span>
               </button>
               <AnimatePresence>
                 {menu && (
@@ -114,7 +135,7 @@ export function Header() {
                   >
                     <p className="menu-name">
                       {user.name}
-                      <small>{user.office} · Spartak Au</small>
+                      <small>{user.office ?? 'Spielerin'} · Spartak Au</small>
                     </p>
                     <Link to="/mein-team" className="menu-item">
                       <UserRound size={16} /> Mein Team
@@ -138,18 +159,17 @@ export function Header() {
 }
 
 export function TabBar() {
-  const { user } = useStore()
+  const { user, sheetOpen, setSheetOpen } = useStore()
   const items = [
     NAV[0],
     NAV[1],
-    NAV[2],
-    NAV[3],
+    { ...NAV[2], short: 'Teams' },
     user ? { to: '/mein-team', label: 'Mein Team', icon: UserRound } : { to: '/login', label: 'Login', icon: LogIn },
   ]
   return (
     <nav className="tab-bar" aria-label="Schnellnavigation">
       {items.map((n) => (
-        <NavLink key={n.to} to={n.to} end={'end' in n ? n.end : undefined} className="tab-item">
+        <NavLink key={n.to} to={n.to} end={'end' in n ? n.end : undefined} className="tab-item" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           {({ isActive }) => (
             <>
               {isActive && <motion.span layoutId="tab-dot" className="tab-glow" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
@@ -159,7 +179,93 @@ export function TabBar() {
           )}
         </NavLink>
       ))}
+      <button className={`tab-item${sheetOpen ? ' active' : ''}`} onClick={() => setSheetOpen(true)} aria-label="Weitere Seiten">
+        <Menu size={20} strokeWidth={1.8} />
+        <span>Mehr</span>
+      </button>
     </nav>
+  )
+}
+
+export function MenuSheet() {
+  const { sheetOpen, setSheetOpen, user, logout, setPaletteOpen } = useStore()
+  const loc = useLocation()
+  useEffect(() => setSheetOpen(false), [loc.pathname, setSheetOpen])
+  useEffect(() => {
+    if (!sheetOpen) return
+    const on = (e: KeyboardEvent) => e.key === 'Escape' && setSheetOpen(false)
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [sheetOpen, setSheetOpen])
+  return (
+    <AnimatePresence>
+      {sheetOpen && (
+        <motion.div className="sheet-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSheetOpen(false)}>
+          <motion.div
+            className="sheet"
+            role="dialog"
+            aria-label="Menü"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={(_, info) => info.offset.y > 90 && setSheetOpen(false)}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="sheet-handle" aria-hidden />
+            <div className="sheet-head">
+              <b>Menü</b>
+              <button className="icon-btn sm" onClick={() => setSheetOpen(false)} aria-label="Menü schließen">
+                <X size={16} />
+              </button>
+            </div>
+            <button
+              className="sheet-search"
+              onClick={() => {
+                setSheetOpen(false)
+                setPaletteOpen(true)
+              }}
+            >
+              <Search size={18} /> Mannschaft, Liga oder Seite suchen
+            </button>
+            <nav className="sheet-links">
+              {NAV.map((n, i) => (
+                <motion.div key={n.to} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }}>
+                  <NavLink to={n.to} end={n.end} className="sheet-link">
+                    <n.icon size={20} />
+                    <span>{n.label}</span>
+                    <ChevronRight size={18} className="sheet-chev" />
+                  </NavLink>
+                </motion.div>
+              ))}
+            </nav>
+            <div className="sheet-theme">
+              <span>Farbschema</span>
+              <ThemeSegment />
+            </div>
+            <div className="sheet-account">
+              {user ? (
+                <>
+                  <NavLink to="/mein-team" className="btn btn-primary btn-block">
+                    <UserRound size={18} /> Mein Team
+                  </NavLink>
+                  <button className="btn btn-ghost btn-block" onClick={logout}>
+                    <LogOut size={18} /> Abmelden ({user.name.split(' ')[0]})
+                  </button>
+                </>
+              ) : (
+                <NavLink to="/login" className="btn btn-primary btn-block">
+                  <LogIn size={18} /> Anmelden oder Demo-Login
+                </NavLink>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

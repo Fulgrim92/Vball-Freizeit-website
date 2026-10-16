@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, CircleHelp, Clock, MapPin, Minus, Plus, Send, ShieldCheck, Target, X } from 'lucide-react'
+import { Check, CircleHelp, Clock, Lock, MapPin, Minus, Plus, Send, ShieldCheck, Target, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { burst } from '../lib/burst'
 import { computeStandings, fmtDate, matchDate, NOW, setsWon, TEAM_BY_ID, weekdayOf, type Match, type SetScore } from '../data/season'
-import { ATTENDANCE, INITIAL_RSVP, ME, MIN_PLAYERS, MY_TEAM_ID, NEXT_SESSIONS, PAST_SESSIONS, SQUAD, type Player, type Rsvp, type Session } from '../data/myteam'
+import { ALL_RIGHTS, ATTENDANCE, INITIAL_RSVP, MIN_PLAYERS, MY_TEAM_ID, NEXT_SESSIONS, PAST_SESSIONS, SQUAD, type Right, type Rsvp, type Session } from '../data/myteam'
 import { CountUp, FormDots, Segmented, TeamBadge } from '../components/ui'
 
 const MY_TEAM = TEAM_BY_ID.get(MY_TEAM_ID)!
 const initials = (n: string) => n.split(' ').map((p) => p[0]).join('')
 
+function useMe() {
+  return useStore().user!
+}
+
 function useRsvp() {
   const { myRsvp } = useStore()
+  const me = useMe()
   return (s: Session) => {
-    const all = { ...INITIAL_RSVP[s.id], [ME.id]: myRsvp[s.id] }
+    const all = { ...INITIAL_RSVP[s.id], [me.id]: myRsvp[s.id] }
     const yes = SQUAD.filter((p) => all[p.id] === 'ja')
     const maybe = SQUAD.filter((p) => all[p.id] === 'vielleicht')
     const no = SQUAD.filter((p) => all[p.id] === 'nein')
@@ -110,6 +115,7 @@ function Ring({ value, label, size = 120 }: { value: number; label: string; size
 
 function SessionCard({ s, index }: { s: Session; index: number }) {
   const get = useRsvp()
+  const me = useMe()
   const { yes, maybe, no } = get(s)
   const enough = yes.length >= MIN_PLAYERS
   return (
@@ -138,7 +144,7 @@ function SessionCard({ s, index }: { s: Session; index: number }) {
         <div className="faces">
           <AnimatePresence initial={false}>
             {yes.map((p) => (
-              <motion.span key={p.id} layout initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className={p.id === ME.id ? 'me' : ''} title={p.name}>
+              <motion.span key={p.id} layout initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className={p.id === me.id ? 'me' : ''} title={p.name}>
                 {initials(p.name)}
               </motion.span>
             ))}
@@ -154,6 +160,7 @@ function SessionCard({ s, index }: { s: Session; index: number }) {
 }
 
 function AttendanceMatrix() {
+  const me = useMe()
   const rows = SQUAD.map((p) => {
     const a = ATTENDANCE[p.id]
     return { p, a, rate: a.filter(Boolean).length / a.length }
@@ -169,7 +176,7 @@ function AttendanceMatrix() {
       <div className="panel-head">
         <div>
           <h2>Trainingsbeteiligung</h2>
-          <p className="muted small">Letzte {PAST_SESSIONS.length} Einheiten, Di und Do</p>
+          <p className="muted small">Letzte {PAST_SESSIONS.length} Einheiten, donnerstags</p>
         </div>
         <div className="spark" aria-label="Teilnehmende pro Einheit">
           <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
@@ -198,7 +205,7 @@ function AttendanceMatrix() {
           </thead>
           <tbody>
             {rows.map(({ p, a, rate }, ri) => (
-              <tr key={p.id} className={p.id === ME.id ? 'me' : ''}>
+              <tr key={p.id} className={p.id === me.id ? 'me' : ''}>
                 <th>
                   <span className="mx-num">{p.number}</span> {p.name}
                 </th>
@@ -244,7 +251,26 @@ function ScoreStepper({ value, onChange, id, label }: { value: number; onChange:
   )
 }
 
+function NoRight({ title, right }: { title: string; right: Right }) {
+  return (
+    <section className="panel locked-panel">
+      <Lock size={22} />
+      <h2 className="panel-title">{title}</h2>
+      <p className="muted">
+        Dafür brauchst du das Recht „{right}“. Bitte deine Mannschaftsverantwortliche, es dir unter „Kader & Rechte“ zu geben.
+      </p>
+      <p className="muted small">Demo-Tipp: Melde dich als „demo“ an, gib der Spielerin das Recht und wechsle zurück.</p>
+    </section>
+  )
+}
+
 function ResultEntry() {
+  const { can } = useStore()
+  if (!can('Ergebnisse')) return <NoRight title="Ergebnis eintragen" right="Ergebnisse" />
+  return <ResultForm />
+}
+
+function ResultForm() {
   const { matches, enterResult, toast } = useStore()
   const candidates = useMemo(() => {
     const home = matches.filter((m) => m.home === MY_TEAM_ID && !m.sets)
@@ -285,7 +311,7 @@ function ResultEntry() {
       <div className="panel-head">
         <div>
           <h2>Ergebnis eintragen</h2>
-          <p className="muted small">Du darfst Ergebnisse für Heimspiele von {MY_TEAM.name} eintragen.</p>
+          <p className="muted small">Du hast das Recht „Ergebnisse“ und darfst Heimspiele von {MY_TEAM.name} eintragen.</p>
         </div>
         {candidates.length > 1 && (
           <select id="result-match" value={matchId} onChange={(e) => setMatchId(e.target.value)}>
@@ -305,7 +331,7 @@ function ResultEntry() {
           if (!valid) return
           enterResult(match.id, used)
           burst(btn.current, 30)
-          toast(`Ergebnis ${final[0]}:${final[1]} gespeichert. Die Tabelle ist aktualisiert.`)
+          toast(`Ergebnis ${final[0]}:${final[1]} gespeichert. Tabelle, Ticker und „Was geschah“ sind aktualisiert.`)
         }}
       >
         <div className="score-head">
@@ -352,6 +378,12 @@ function ResultEntry() {
 }
 
 function Reschedule() {
+  const { can } = useStore()
+  if (!can('Spielverlegung')) return <NoRight title="Heimspiel verlegen" right="Spielverlegung" />
+  return <RescheduleForm />
+}
+
+function RescheduleForm() {
   const { matches, toast } = useStore()
   const home = matches.filter((m) => m.home === MY_TEAM_ID && !m.sets && matchDate(m) > NOW)
   const [id, setId] = useState(home[0]?.id ?? '')
@@ -391,32 +423,40 @@ function Reschedule() {
 }
 
 function Squad() {
-  const { toast } = useStore()
-  const [rights, setRights] = useState(() => Object.fromEntries(SQUAD.map((p) => [p.id, p.rights])))
-  const ALL: Player['rights'] = ['Ergebnisse', 'Team bearbeiten', 'Spielverlegung', 'Rechte vergeben']
+  const { toast, rights, setRights, can } = useStore()
+  const me = useMe()
+  const canGrant = can('Rechte vergeben')
   return (
     <section className="panel">
       <div className="panel-head">
         <div>
           <h2>Kader & Rechte</h2>
-          <p className="muted small">Du kannst Rechte weitergeben, die du selbst hast. Ämter sind davon getrennt.</p>
+          <p className="muted small">
+            {canGrant
+              ? 'Du kannst Rechte weitergeben, die du selbst hast. Ämter sind davon getrennt.'
+              : 'Rechte vergeben darf nur, wer selbst das Recht „Rechte vergeben“ hat.'}
+          </p>
         </div>
       </div>
       <ul className="squad">
         {SQUAD.map((p, i) => (
-          <motion.li key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+          <motion.li key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }} className={p.id === me.id ? 'me' : ''}>
             <span className="jersey">{p.number}</span>
             <span className="squad-name">
-              <b>{p.name}</b>
+              <b>
+                {p.name}
+                {p.id === me.id ? ' (du)' : ''}
+              </b>
               <small>
                 {p.position}
                 {p.office ? ` · ${p.office}` : ''}
               </small>
             </span>
             <span className="rights">
-              {ALL.map((r) => {
-                const on = rights[p.id].includes(r)
-                const locked = p.id === ME.id
+              {ALL_RIGHTS.map((r: Right) => {
+                const has = rights[p.id] ?? []
+                const on = has.includes(r)
+                const locked = p.id === me.id || !canGrant || !me.rights.includes(r)
                 return (
                   <button
                     key={r}
@@ -424,7 +464,7 @@ function Squad() {
                     disabled={locked}
                     aria-pressed={on}
                     onClick={() => {
-                      setRights((all) => ({ ...all, [p.id]: on ? all[p.id].filter((x) => x !== r) : [...all[p.id], r] }))
+                      setRights(p.id, on ? has.filter((x) => x !== r) : [...has, r])
                       toast(on ? `${p.name.split(' ')[0]} darf „${r}“ nicht mehr.` : `${p.name.split(' ')[0]} darf jetzt „${r}“.`, 'info')
                     }}
                   >
@@ -442,13 +482,14 @@ function Squad() {
 
 function Overview({ go }: { go: (t: Tab) => void }) {
   const { matches } = useStore()
+  const me = useMe()
   const get = useRsvp()
   const next = matches.find((m) => (m.home === MY_TEAM_ID || m.away === MY_TEAM_ID) && !m.sets && matchDate(m) > NOW)
   const standings = computeStandings(MY_TEAM.league, matches)
   const pos = standings.findIndex((r) => r.team.id === MY_TEAM_ID)
   const around = standings.slice(Math.max(0, pos - 2), Math.max(0, pos - 2) + 5)
   const teamRate = SQUAD.reduce((n, p) => n + ATTENDANCE[p.id].filter(Boolean).length, 0) / (SQUAD.length * PAST_SESSIONS.length)
-  const myRate = ATTENDANCE[ME.id].filter(Boolean).length / PAST_SESSIONS.length
+  const myRate = ATTENDANCE[me.id].filter(Boolean).length / PAST_SESSIONS.length
   const nextSession = NEXT_SESSIONS[0]
   const open = NEXT_SESSIONS.filter((s) => !get(s).mine).length
 
@@ -528,7 +569,8 @@ type Tab = 'uebersicht' | 'training' | 'ergebnis' | 'kader'
 
 export default function MyTeam() {
   const { user } = useStore()
-  const [tab, setTab] = useState<Tab>('uebersicht')
+  const loc = useLocation()
+  const [tab, setTab] = useState<Tab>(((loc.state as { tab?: Tab } | null)?.tab) ?? 'uebersicht')
   if (!user) return <Navigate to="/login" state={{ from: '/mein-team' }} replace />
   const hour = new Date().getHours()
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Servus' : 'Guten Abend'
@@ -545,7 +587,7 @@ export default function MyTeam() {
           </h1>
         </div>
         <span className="role-pill">
-          <Target size={14} /> {user.office}
+          <Target size={14} /> {user.office ?? 'Spielerin'}
         </span>
       </header>
       <div className="dash-tabs">

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion'
 import { ArrowLeft, Eye, EyeOff, KeyRound, Loader2, LogIn, Sparkles } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { DEMO_ACCOUNT } from '../data/myteam'
+import { DEMO_ACCOUNTS, SQUAD } from '../data/myteam'
 import { burst } from '../lib/burst'
 
 export default function Login() {
@@ -24,7 +24,7 @@ export default function Login() {
     if (user) nav(from, { replace: true })
   }, [user, nav, from])
 
-  const typeDemo = async () => {
+  const typeDemo = async (acc: (typeof DEMO_ACCOUNTS)[number]) => {
     setError('')
     const type = async (text: string, set: (s: string) => void) => {
       for (let i = 1; i <= text.length; i++) {
@@ -34,8 +34,8 @@ export default function Login() {
     }
     setName('')
     setPw('')
-    await type(DEMO_ACCOUNT.username, setName)
-    await type(DEMO_ACCOUNT.password, setPw)
+    await type(acc.username, setName)
+    await type(acc.password, setPw)
   }
 
   const submit = async (e: React.FormEvent) => {
@@ -52,9 +52,11 @@ export default function Login() {
     setBusy(false)
     if (ok) {
       burst(submitRef.current, 28)
-      toast('Willkommen zurück, Lena!')
+      const acc = DEMO_ACCOUNTS.find((a) => a.username === name.trim().toLowerCase())
+      const first = SQUAD.find((p) => p.id === acc?.player)?.name.split(' ')[0]
+      toast(`Willkommen zurück${first ? `, ${first}` : ''}!`)
     } else {
-      setError('Benutzername oder Passwort stimmt nicht. Für die Demo: „demo“ und „volley“.')
+      setError('Benutzername oder Passwort stimmt nicht. Für die Demo: „demo“ oder „spieler“, Passwort „volley“.')
       shake.start({ x: [0, -10, 9, -6, 4, 0], transition: { duration: 0.4 } })
     }
   }
@@ -73,9 +75,13 @@ export default function Login() {
               <h1>Anmelden</h1>
               <p className="muted">Mit deinem Konto verwaltest du Training, Ergebnisse und Rechte deiner Mannschaft.</p>
 
-              <button type="button" className="demo-chip" onClick={typeDemo}>
-                <Sparkles size={15} /> Demo-Zugang einsetzen
-              </button>
+              <div className="demo-chips">
+                {DEMO_ACCOUNTS.map((acc) => (
+                  <button key={acc.username} type="button" className="demo-chip" onClick={() => typeDemo(acc)}>
+                    <Sparkles size={15} /> Demo: {acc.label}
+                  </button>
+                ))}
+              </div>
 
               <div className="field">
                 <input id="login-name" autoComplete="username" value={name} onChange={(e) => setName(e.target.value)} placeholder=" " />

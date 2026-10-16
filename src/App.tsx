@@ -3,7 +3,7 @@ import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import { StoreProvider } from './lib/store'
 import AmbientBackground from './components/AmbientBackground'
-import { CommandPalette, Footer, Header, TabBar, Toasts } from './components/Shell'
+import { CommandPalette, Footer, Header, MenuSheet, TabBar, Toasts } from './components/Shell'
 import Home from './pages/Home'
 import Tables from './pages/Tables'
 import { TeamDetail, TeamsList } from './pages/Teams'
@@ -16,9 +16,10 @@ function Routed() {
   // one transition per section, so switching leagues inside /tabellen stays in place
   const section = loc.pathname.split('/')[1] || 'start'
   const key = section === 'mannschaften' ? loc.pathname : section
+  // every navigation lands at the top of the new page
   useEffect(() => {
-    window.scrollTo({ top: 0 })
-  }, [key])
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }, [loc.pathname])
   return (
     <AnimatePresence mode="wait">
       <motion.main
@@ -67,6 +68,7 @@ export default function App() {
           <Routed />
           <Footer />
           <TabBar />
+          <MenuSheet />
           <CommandPalette />
           <Toasts />
         </HashRouter>

@@ -49,7 +49,7 @@ export default function Tables() {
 
   return (
     <div className="wrap page">
-      <PageHead eyebrow={`Spielplan & Tabelle ${SEASON}`} title={<>Liga {valid}</>}>
+      <PageHead eyebrow={`Spielplan & Tabelle ${SEASON} · Staffelleitung ${LEAGUES.find((l) => l.id === valid)!.lead}`} title={<>Liga {valid}</>}>
         <LeaguePicker
           value={valid}
           onChange={(id) => {

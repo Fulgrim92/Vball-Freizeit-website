@@ -1,7 +1,7 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowRight, CalendarCheck2, MapPin, Trophy, Users } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowDown, ArrowRight, CalendarCheck2, Compass, MapPin, MessagesSquare, Pause, Play, Plus, Trophy, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import {
   computeStandings,
@@ -18,6 +18,7 @@ import {
 } from '../data/season'
 import { POSTS, TOURNAMENTS } from '../data/community'
 import { CountUp, rise, stagger, TeamBadge } from '../components/ui'
+import { HOME_TOUR, TourInvite, TourOverlay, useTour } from '../components/Tour'
 
 const VolleyBall3D = lazy(() => import('../three/VolleyBall3D'))
 
@@ -53,46 +54,253 @@ function Ticker() {
   )
 }
 
-function Hero() {
+function HeroVideo() {
+  const [ready, setReady] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const ref = useRef<HTMLVideoElement>(null)
+  const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  return (
+    <>
+      <video
+        ref={ref}
+        className={`hero-video${ready ? ' is-ready' : ''}`}
+        autoPlay={!reduce}
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster="showreel/showreel-poster.jpg"
+        onLoadedData={() => setReady(true)}
+        aria-hidden
+      >
+        <source src="showreel/showreel-web.webm" type="video/webm" />
+        <source src="showreel/showreel-web.mp4" type="video/mp4" />
+      </video>
+      {ready && (
+        <button
+          className="video-toggle"
+          onClick={() => {
+            const v = ref.current!
+            if (v.paused) v.play()
+            else v.pause()
+            setPaused(v.paused)
+          }}
+          aria-label={paused ? 'Hintergrundvideo abspielen' : 'Hintergrundvideo pausieren'}
+        >
+          {paused ? <Play size={14} /> : <Pause size={14} />}
+        </button>
+      )}
+    </>
+  )
+}
+
+function Hero({ onTour }: { onTour: () => void }) {
   const [spikes, setSpikes] = useState(0)
-  const { user } = useStore()
   const words = ['Pritschen.', 'Baggern.', 'Schmettern.']
   return (
-    <section className="hero wrap">
-      <motion.div className="hero-copy" variants={stagger} initial="hidden" animate="show">
-        <motion.p className="eyebrow" variants={rise}>
-          Saison {SEASON} · {LEAGUES.length} Ligen · {TEAMS.length} Mannschaften
-        </motion.p>
-        <motion.h1 className="hero-title" variants={rise}>
-          {words.map((w, i) => (
-            <span key={w} className="hero-word" style={{ '--i': i } as React.CSSProperties}>
-              {w}
-            </span>
-          ))}
-          <span className="hero-sub-title">Feierabend in München.</span>
-        </motion.h1>
-        <motion.p className="lead" variants={rise}>
-          Die Breitensportliga für alle, die nach der Arbeit lieber in der Halle stehen. Tabellen, Spielpläne,
-          Hallenzeiten und die Trainingsplanung deines Teams an einem Ort.
-        </motion.p>
-        <motion.div className="hero-cta" variants={rise}>
-          <Link to="/tabellen" className="btn btn-primary">
-            Tabellen & Spielpläne <ArrowRight size={18} />
-          </Link>
-          <Link to={user ? '/mein-team' : '/login'} className="btn btn-ghost">
-            {user ? 'Zum Training zusagen' : 'Anmelden fürs Team'}
-          </Link>
+    <section className="hero-band" data-step>
+      <HeroVideo />
+      <div className="hero wrap">
+        <motion.div className="hero-copy" variants={stagger} initial="hidden" animate="show">
+          <motion.p className="eyebrow" variants={rise}>
+            Saison {SEASON} · {LEAGUES.length} Ligen · {TEAMS.length} Mannschaften
+          </motion.p>
+          <motion.h1 className="hero-title" variants={rise}>
+            {words.map((w, i) => (
+              <span key={w} className="hero-word" style={{ '--i': i } as React.CSSProperties}>
+                {w}
+              </span>
+            ))}
+            <span className="hero-sub-title">Feierabend in München.</span>
+          </motion.h1>
+          <motion.p className="lead" variants={rise}>
+            Die Breitensportliga für alle, die nach der Arbeit lieber in der Halle stehen. Tabellen, Spielpläne,
+            Hallenzeiten und die Trainingsplanung deines Teams an einem Ort.
+          </motion.p>
+          <motion.div className="hero-cta" variants={rise}>
+            <a
+              href="#tabelle"
+              className="btn btn-primary"
+              onClick={(e) => {
+                e.preventDefault()
+                document.querySelector('[data-tour="tabelle"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+            >
+              Zur Tabelle <ArrowDown size={18} />
+            </a>
+            <button className="btn btn-ghost" onClick={onTour}>
+              <Compass size={18} /> Tour starten
+            </button>
+          </motion.div>
         </motion.div>
-      </motion.div>
-      <div className="hero-ball-wrap" onClickCapture={() => setSpikes((s) => s + 1)}>
-        <Suspense fallback={<div className="hero-ball" />}>
-          <VolleyBall3D className="hero-ball" />
-        </Suspense>
-        <p className="ball-hint">
-          {spikes === 0 ? 'Klick auf den Ball zum Schmettern' : spikes < 5 ? `${spikes}× geschmettert` : `${spikes}× geschmettert. Ab ins Training!`}
-        </p>
+        <div className="hero-ball-wrap" onClickCapture={() => setSpikes((n) => n + 1)}>
+          <Suspense fallback={<div className="hero-ball" />}>
+            <VolleyBall3D className="hero-ball" />
+          </Suspense>
+          <p className="ball-hint">
+            {spikes === 0 ? 'Klick auf den Ball zum Schmettern' : spikes < 5 ? `${spikes}× geschmettert` : `${spikes}× geschmettert. Ab ins Training!`}
+          </p>
+        </div>
       </div>
     </section>
+  )
+}
+
+function FeaturedTable() {
+  const { matches } = useStore()
+  const [league, setLeague] = useState('1')
+  const rows = useMemo(() => computeStandings(league, matches), [league, matches])
+  const tier = Number(league[0])
+  const max = Math.max(2, ...rows.map((r) => r.points))
+  return (
+    <section className="panel feature-table" data-tour="tabelle" id="tabelle">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Tabelle {SEASON}</p>
+          <h2>Liga {league}</h2>
+        </div>
+        <Link to={`/tabellen/${league}`} className="link-arrow">
+          Spielplan & Details <ArrowRight size={16} />
+        </Link>
+      </div>
+      <div className="mini-picker" role="tablist" aria-label="Liga wählen">
+        {LEAGUES.map((l) => (
+          <button key={l.id} role="tab" aria-selected={l.id === league} className={l.id === league ? 'on' : ''} onClick={() => setLeague(l.id)}>
+            {l.id === league && <motion.span layoutId="mini-ind" className="mini-ind" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />}
+            <span>{l.id}</span>
+          </button>
+        ))}
+      </div>
+      <ol className="ft-rows">
+        <AnimatePresence initial={false} mode="popLayout">
+          {rows.map((r, i) => {
+            const zone = tier > 1 && i === 0 ? 'up' : tier < 5 && i >= rows.length - 2 ? 'down' : ''
+            return (
+              <motion.li key={r.team.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0, transition: { delay: i * 0.025 } }} exit={{ opacity: 0 }} className={zone}>
+                <span className="pos">{i + 1}</span>
+                <Link to={`/mannschaften/${r.team.id}`} className="ft-team">
+                  <TeamBadge team={r.team} size={26} />
+                  <span>{r.team.name}</span>
+                </Link>
+                <span className="ft-games mono">{r.played} Sp</span>
+                <span className="ft-sets mono">
+                  {r.setsFor}:{r.setsAgainst}
+                </span>
+                <span className="ft-bar">
+                  <motion.i animate={{ width: `${(r.points / max) * 100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
+                </span>
+                <b className="ft-pts">{r.points}</b>
+              </motion.li>
+            )
+          })}
+        </AnimatePresence>
+      </ol>
+    </section>
+  )
+}
+
+type FeedItem = { key: string; date: Date; kind: 'Ergebnis' | 'Forum' | 'Spielerbörse' | 'Turnier'; title: React.ReactNode; meta: string; to: string }
+
+function RecentEvents() {
+  const { matches, can } = useStore()
+  const weekAgo = new Date(NOW)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  const items: FeedItem[] = [
+    ...matches
+      .filter((m) => m.sets && matchDate(m) >= weekAgo)
+      .slice(-6)
+      .map((m) => {
+        const [h, a] = setsWon(m.sets!)
+        return {
+          key: m.id,
+          date: matchDate(m),
+          kind: 'Ergebnis' as const,
+          title: (
+            <>
+              <span className={h > a ? 'w' : ''}>{TEAM_BY_ID.get(m.home)!.name}</span> <b className="feed-score">{h}:{a}</b>{' '}
+              <span className={a > h ? 'w' : ''}>{TEAM_BY_ID.get(m.away)!.name}</span>
+            </>
+          ),
+          meta: `Liga ${m.league} · Spiel ${m.no}`,
+          to: `/tabellen/${m.league}`,
+        }
+      }),
+    ...POSTS.map((p) => ({
+      key: p.id,
+      date: new Date(p.date),
+      kind: p.kind === 'forum' ? ('Forum' as const) : ('Spielerbörse' as const),
+      title: p.title,
+      meta: `${p.author} · ${p.replies} Antworten`,
+      to: '/community',
+    })),
+  ].sort((x, y) => +y.date - +x.date)
+  const shown = items.slice(0, 8)
+  const next = TOURNAMENTS.filter((t) => new Date(t.date) >= NOW).slice(0, 2)
+  return (
+    <section className="panel feed" data-tour="events">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Aktuelles</p>
+          <h2>Was geschah in den letzten Tagen</h2>
+        </div>
+        {can('Ergebnisse') && (
+          <Link to="/mein-team" state={{ tab: 'ergebnis' }} className="btn btn-primary btn-sm">
+            <Plus size={16} /> Ergebnis eintragen
+          </Link>
+        )}
+      </div>
+      <motion.ol className="feed-list" variants={stagger} initial="hidden" animate="show">
+        {shown.map((it) => (
+          <motion.li key={it.key} variants={rise}>
+            <Link to={it.to} className="feed-item">
+              <span className={`feed-icon k-${it.kind === 'Spielerbörse' ? 'boerse' : it.kind.toLowerCase()}`} aria-hidden>
+                {it.kind === 'Ergebnis' ? <Trophy size={15} /> : it.kind === 'Forum' ? <MessagesSquare size={15} /> : <Users size={15} />}
+              </span>
+              <span className="feed-body">
+                <span className="feed-title">{it.title}</span>
+                <small>
+                  {it.kind} · {relativeDay(it.date)} · {it.meta}
+                </small>
+              </span>
+            </Link>
+          </motion.li>
+        ))}
+      </motion.ol>
+      <div className="feed-tournaments">
+        {next.map((t) => (
+          <Link key={t.id} to="/termine" className="feed-t">
+            <b>{fmtShort(new Date(t.date))}</b>
+            <span>{t.title}</span>
+            <small>{t.spots - t.taken} Plätze frei</small>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function StepArrow() {
+  const [atEnd, setAtEnd] = useState(false)
+  useEffect(() => {
+    const on = () => setAtEnd(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160)
+    on()
+    window.addEventListener('scroll', on, { passive: true })
+    return () => window.removeEventListener('scroll', on)
+  }, [])
+  const go = () => {
+    if (atEnd) return window.scrollTo({ top: 0, behavior: 'smooth' })
+    const steps = [...document.querySelectorAll<HTMLElement>('[data-step]')]
+    const next = steps.find((el) => el.getBoundingClientRect().top > 100)
+    if (next) next.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    else window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  }
+  return (
+    <motion.button className="step-arrow" onClick={go} aria-label={atEnd ? 'Nach oben' : 'Zum nächsten Abschnitt'} whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.92 }}>
+      <motion.span animate={{ rotate: atEnd ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+        <ArrowDown size={22} />
+      </motion.span>
+      <span className="step-label">{atEnd ? 'Nach oben' : 'Weiter'}</span>
+    </motion.button>
   )
 }
 
@@ -111,7 +319,7 @@ function ThisWeek() {
   }, [upcoming, showAll])
 
   return (
-    <section className="wrap section">
+    <section className="wrap section" data-step data-tour="woche">
       <div className="section-head">
         <div>
           <p className="eyebrow">Die nächsten 7 Tage</p>
@@ -186,7 +394,7 @@ function Pyramid() {
   const { matches } = useStore()
   const tiers = [1, 2, 3, 4, 5]
   return (
-    <section className="wrap section">
+    <section className="wrap section" data-step data-tour="pyramide">
       <div className="section-head">
         <div>
           <p className="eyebrow">Auf- und Abstieg</p>
@@ -225,7 +433,7 @@ function Stats() {
   const balls = played.reduce((n, m) => n + m.sets!.reduce((x, [a, b]) => x + a + b, 0), 0)
   const tiebreaks = played.filter((m) => m.sets!.length === 3).length
   return (
-    <section className="wrap stats">
+    <section className="wrap stats" data-step>
       <div className="stat">
         <CountUp value={played.length} />
         <span>Spiele gespielt</span>
@@ -246,55 +454,14 @@ function Stats() {
   )
 }
 
-function Community() {
-  const fresh = POSTS.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)
-  return (
-    <section className="wrap section">
-      <div className="section-head">
-        <div>
-          <p className="eyebrow">Was geschah in den letzten Tagen</p>
-          <h2>Neu in der Liga</h2>
-        </div>
-        <Link to="/community" className="link-arrow">
-          Börse & Forum <ArrowRight size={16} />
-        </Link>
-      </div>
-      <div className="news-grid">
-        {fresh.map((p) => (
-          <Link to="/community" key={p.id} className="news-card">
-            <span className={`tag tag-${p.kind}`}>{p.kind === 'forum' ? 'Forum' : 'Spielerbörse'}</span>
-            <h3>{p.title}</h3>
-            <p className="muted">{p.excerpt}</p>
-            <span className="news-meta">
-              {p.author} · {relativeDay(new Date(p.date))} · {p.replies} Antworten
-            </span>
-          </Link>
-        ))}
-        <Link to="/termine" className="news-card news-turnier">
-          <span className="tag tag-turnier">Turniere</span>
-          <ul className="mini-list">
-            {TOURNAMENTS.slice(0, 3).map((t) => (
-              <li key={t.id}>
-                <b>{fmtShort(new Date(t.date))}</b>
-                <span>{t.title}</span>
-              </li>
-            ))}
-          </ul>
-          <span className="news-meta">Alle Turniere ansehen</span>
-        </Link>
-      </div>
-    </section>
-  )
-}
-
 function TrainingTeaser() {
   const { user } = useStore()
   return (
-    <section className="wrap section">
-      <div className="teaser">
+    <section className="wrap section" data-step>
+      <div className="teaser" data-tour="training">
         <div className="teaser-copy">
           <p className="eyebrow">Für Mannschaften</p>
-          <h2>Wer kommt Dienstag?</h2>
+          <h2>Wer kommt Donnerstag?</h2>
           <p className="lead">
             Zu- und Absagen fürs Training, Trainingsbeteiligung pro Person, Ergebnisse eintragen und Heimspiele verlegen.
             Alles im Bereich „Mein Team“.
@@ -316,7 +483,7 @@ function TrainingTeaser() {
         </div>
         <div className="teaser-visual" aria-hidden>
           <div className="mock-session">
-            <span className="ms-day">Di 20:00</span>
+            <span className="ms-day">Do 20:00</span>
             <span className="ms-title">Annahme & Abwehr</span>
             <div className="ms-bar">
               <i style={{ width: '72%' }} />
@@ -337,15 +504,22 @@ function TrainingTeaser() {
 }
 
 export default function Home() {
+  const tour = useTour()
   return (
     <>
-      <Hero />
+      <Hero onTour={tour.start} />
       <Ticker />
+      <div className="wrap section feature-grid" data-step>
+        <FeaturedTable />
+        <RecentEvents />
+      </div>
       <ThisWeek />
       <Stats />
       <Pyramid />
       <TrainingTeaser />
-      <Community />
+      {tour.step === null && <StepArrow />}
+      {tour.step === null && <TourInvite onStart={tour.start} />}
+      <TourOverlay steps={HOME_TOUR} step={tour.step} setStep={tour.setStep} />
     </>
   )
 }

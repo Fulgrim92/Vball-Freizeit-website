@@ -1,9 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, CalendarClock, Mail, MapPin, Search, Trophy, Users } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Mail, MapPin, Search, Trophy } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { computeStandings, fmtDate, matchDate, NOW, setsWon, TEAM_BY_ID, TEAMS, WEEKDAYS_LONG, weekdayOf, type Team } from '../data/season'
+import { computeStandings, fmtDate, matchDate, NOW, setsWon, TEAM_BY_ID, TEAMS, WEEKDAYS, WEEKDAYS_LONG, weekdayOf, type Team } from '../data/season'
+import type { Slot } from '../data/teams'
+
+const slotText = (slots: Slot[]) => slots.map((x) => `${WEEKDAYS[x.day]} ${x.from}${x.to ? `–${x.to}` : ''}`).join(' · ')
 import { FormDots, PageHead, Segmented, SetPills, TeamBadge } from '../components/ui'
 
 function TiltCard({ team, rank, children }: { team: Team; rank: number; children: React.ReactNode }) {
@@ -39,7 +42,7 @@ export function TeamsList() {
     for (const l of new Set(TEAMS.map((t) => t.league))) computeStandings(l, matches).forEach((r, i) => m.set(r.team.id, { rank: i + 1, points: r.points, form: r.form }))
     return m
   }, [matches])
-  const list = TEAMS.filter((t) => (tier === 'alle' || t.league[0] === tier) && t.name.toLowerCase().includes(q.trim().toLowerCase()))
+  const list = TEAMS.filter((t) => (tier === 'alle' || t.league[0] === tier) && (t.name + ' ' + (t.club ?? '') + ' ' + t.venues.join(' ')).toLowerCase().includes(q.trim().toLowerCase()))
 
   return (
     <div className="wrap page">
@@ -48,7 +51,7 @@ export function TeamsList() {
           <label className="search-field">
             <Search size={16} />
             <span className="sr-only">Mannschaft suchen</span>
-            <input id="team-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Mannschaft suchen" />
+            <input id="team-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Team, Verein oder Halle" />
           </label>
           <Segmented
             id="tier"
@@ -70,9 +73,10 @@ export function TeamsList() {
                   <p className="team-sub">
                     Liga {t.league} · {r.points} Punkte
                   </p>
+                  {t.club && <p className="team-club">{t.club}</p>}
                   <FormDots form={r.form} />
                   <p className="team-hall">
-                    <CalendarClock size={14} /> {WEEKDAYS_LONG[t.hall.day]}, {t.hall.time} Uhr
+                    <CalendarClock size={14} /> {slotText(t.slots)}
                   </p>
                 </TiltCard>
               </motion.div>
@@ -120,7 +124,7 @@ export function TeamDetail() {
         </motion.div>
         <div className="team-hero-copy">
           <p className="eyebrow">
-            <Link to={`/tabellen/${team.league}`}>Liga {team.league}</Link> · seit {team.founded}
+            <Link to={`/tabellen/${team.league}`}>Liga {team.league}</Link>{team.club ? ` · ${team.club}` : ''}
           </p>
           <h1>{team.name}</h1>
           <div className="team-kpis">
@@ -134,7 +138,7 @@ export function TeamDetail() {
               Satzquotient <b>{setRatio}</b>
             </span>
             <span>
-              <Users size={16} /> <b>{team.members}</b> im Kader
+              <CalendarClock size={16} /> {slotText(team.slots)}
             </span>
           </div>
         </div>
@@ -188,18 +192,38 @@ export function TeamDetail() {
         </section>
         <aside className="side-stack">
           <section className="panel">
-            <h2 className="panel-title">Hallenzeit</h2>
-            <p className="big-line">
-              {WEEKDAYS_LONG[team.hall.day]}, {team.hall.time} Uhr
-            </p>
-            <p className="muted with-icon">
-              <MapPin size={15} /> {team.hall.venue}
-            </p>
+            <h2 className="panel-title">Training & Heimspiele</h2>
+            <ul className="slot-list">
+              {team.slots.map((sl, i) => (
+                <li key={i}>
+                  <b>{WEEKDAYS_LONG[sl.day]}</b>
+                  <span className="mono">
+                    {sl.from}
+                    {sl.to ? `–${sl.to}` : ''} Uhr
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {team.venues.length ? (
+              team.venues.map((v) => (
+                <p key={v} className="muted with-icon venue-line">
+                  <MapPin size={15} /> {v}
+                </p>
+              ))
+            ) : (
+              <p className="muted small">Keine Halle angegeben.</p>
+            )}
           </section>
           <section className="panel">
-            <h2 className="panel-title">Ansprechperson</h2>
-            <p className="big-line">{team.contact}</p>
-            <button className="btn btn-ghost btn-sm" onClick={() => toast(`Anfrage an ${team.contact} gesendet (Demo).`)}>
+            <h2 className="panel-title">{team.contacts.length > 1 ? 'Ansprechpersonen' : 'Ansprechperson'}</h2>
+            <ul className="contact-list">
+              {team.contacts.map((c) => (
+                <li key={c}>
+                  <span className="avatar sm">{c.split(' ').map((p) => p[0]).join('')}</span> {c}
+                </li>
+              ))}
+            </ul>
+            <button className="btn btn-ghost btn-sm" onClick={() => toast(`Kontaktanfrage an ${team.contacts[0]} vorbereitet (Demo).`, 'info')}>
               <Mail size={16} /> Kontakt aufnehmen
             </button>
           </section>

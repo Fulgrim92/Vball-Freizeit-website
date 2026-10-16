@@ -7,6 +7,7 @@ import { burst } from '../lib/burst'
 import { computeStandings, fmtDate, matchDate, NOW, setsWon, TEAM_BY_ID, weekdayOf, type Match, type SetScore } from '../data/season'
 import { ALL_RIGHTS, ATTENDANCE, INITIAL_RSVP, MIN_PLAYERS, MY_TEAM_ID, NEXT_SESSIONS, PAST_SESSIONS, SQUAD, type Right, type Rsvp, type Session } from '../data/myteam'
 import { CountUp, FormDots, Segmented, TeamBadge } from '../components/ui'
+import { LiveConsole } from '../live/LiveViews'
 
 const MY_TEAM = TEAM_BY_ID.get(MY_TEAM_ID)!
 const initials = (n: string) => n.split(' ').map((p) => p[0]).join('')
@@ -565,12 +566,12 @@ function Overview({ go }: { go: (t: Tab) => void }) {
   )
 }
 
-type Tab = 'uebersicht' | 'training' | 'ergebnis' | 'kader'
+type Tab = 'uebersicht' | 'training' | 'live' | 'ergebnis' | 'kader'
 
 export default function MyTeam() {
   const { user } = useStore()
   const loc = useLocation()
-  const [tab, setTab] = useState<Tab>(((loc.state as { tab?: Tab } | null)?.tab) ?? 'uebersicht')
+  const [tab, setTab] = useState<Tab>(() => (loc.state as { tab?: Tab } | null)?.tab ?? 'uebersicht')
   if (!user) return <Navigate to="/login" state={{ from: '/mein-team' }} replace />
   const hour = new Date().getHours()
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Servus' : 'Guten Abend'
@@ -598,6 +599,7 @@ export default function MyTeam() {
           options={[
             { value: 'uebersicht', label: 'Übersicht' },
             { value: 'training', label: 'Training' },
+            { value: 'live', label: 'Live' },
             { value: 'ergebnis', label: 'Ergebnisse' },
             { value: 'kader', label: 'Kader & Rechte' },
           ]}
@@ -614,6 +616,11 @@ export default function MyTeam() {
                 ))}
               </div>
               <AttendanceMatrix />
+            </div>
+          )}
+          {tab === 'live' && (
+            <div className="live-console-wrap">
+              <LiveConsole />
             </div>
           )}
           {tab === 'ergebnis' && (

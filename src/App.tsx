@@ -10,6 +10,8 @@ import { TeamDetail, TeamsList } from './pages/Teams'
 import { CommunityPage, Infos, Termine } from './pages/Community'
 import Login from './pages/Login'
 import MyTeam from './pages/MyTeam'
+import Live from './pages/Live'
+import { LiveProvider } from './live/LiveProvider'
 
 function Routed() {
   const loc = useLocation()
@@ -33,6 +35,7 @@ function Routed() {
       >
         <Routes location={loc}>
           <Route path="/" element={<Home />} />
+          <Route path="/live" element={<Live />} />
           <Route path="/tabellen/:league?" element={<Tables />} />
           <Route path="/mannschaften" element={<TeamsList />} />
           <Route path="/mannschaften/:id" element={<TeamDetail />} />
@@ -52,6 +55,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <StoreProvider>
+        <LiveProvider>
         <HashRouter>
           <a
             href="#inhalt"
@@ -72,6 +76,7 @@ export default function App() {
           <CommandPalette />
           <Toasts />
         </HashRouter>
+        </LiveProvider>
       </StoreProvider>
     </MotionConfig>
   )

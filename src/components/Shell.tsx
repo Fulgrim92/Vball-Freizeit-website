@@ -10,6 +10,7 @@ import {
   Moon,
   MessagesSquare,
   Monitor,
+  Radio,
   Search,
   Shirt,
   Sun,
@@ -20,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { useLive } from '../live/LiveProvider'
 import { LEAGUES, TEAMS } from '../data/season'
 import { Segmented, TeamBadge } from './ui'
 
@@ -40,6 +42,7 @@ export function Logo() {
 
 const NAV = [
   { to: '/', label: 'Start', icon: Home, end: true },
+  { to: '/live', label: 'Live', icon: Radio },
   { to: '/tabellen', label: 'Tabellen', icon: Table2 },
   { to: '/mannschaften', label: 'Mannschaften', icon: Shirt },
   { to: '/termine', label: 'Turniere & Termine', short: 'Termine', icon: CalendarDays },
@@ -82,6 +85,7 @@ function ThemeSegment() {
 
 export function Header() {
   const { user, setPaletteOpen, logout, setSheetOpen } = useStore()
+  const onAir = useLive().games.some((g) => g.status === 'live')
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
   const loc = useLocation()
@@ -103,7 +107,17 @@ export function Header() {
               {({ isActive }) => (
                 <>
                   {isActive && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
-                  <span>{n.label}</span>
+                  <span>
+                    {n.to === '/live' && onAir && <i className="live-dot nav-live" />}
+                    {'short' in n ? (
+                      <>
+                        <span className="nav-full">{n.label}</span>
+                        <span className="nav-short">{n.short}</span>
+                      </>
+                    ) : (
+                      n.label
+                    )}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -160,10 +174,12 @@ export function Header() {
 
 export function TabBar() {
   const { user, sheetOpen, setSheetOpen } = useStore()
+  const onAir = useLive().games.some((g) => g.status === 'live')
+  // Live gets its own tab on phones; Mannschaften and the rest sit under "Mehr".
   const items = [
     NAV[0],
+    NAV[2],
     NAV[1],
-    { ...NAV[2], short: 'Teams' },
     user ? { to: '/mein-team', label: 'Mein Team', icon: UserRound } : { to: '/login', label: 'Login', icon: LogIn },
   ]
   return (
@@ -174,6 +190,7 @@ export function TabBar() {
             <>
               {isActive && <motion.span layoutId="tab-dot" className="tab-glow" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
               <n.icon size={20} strokeWidth={isActive ? 2.4 : 1.8} />
+              {n.to === '/live' && onAir && <i className="live-dot tab-live" />}
               <span>{'short' in n && n.short ? n.short : n.label}</span>
             </>
           )}

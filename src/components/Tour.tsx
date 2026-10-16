@@ -11,6 +11,7 @@ export interface TourStep {
 
 // Home page tour: each step spotlights a section marked with data-tour="…".
 export const HOME_TOUR: TourStep[] = [
+  { target: 'live', title: 'Live aus den Hallen', text: 'Laufende Spiele mit Spielstand Satz für Satz. Teams melden Punkte direkt vom Handy, alle anderen schauen im Live-Ticker zu.' },
   { target: 'tabelle', title: 'Die Tabelle', text: 'Alle 15 Ligen auf einen Blick. Wechsle die Liga oben, tipp auf ein Team für Hallenzeiten und Ansprechpersonen.' },
   { target: 'events', title: 'Was geschah in den letzten Tagen', text: 'Neue Ergebnisse, Forum, Spielerbörse und Turniere in einer Liste, das Neueste zuerst.' },
   { target: 'woche', title: 'Spiele diese Woche', text: 'Alle Partien der nächsten sieben Tage mit Uhrzeit und Halle. Filtere nach deiner Liga.' },

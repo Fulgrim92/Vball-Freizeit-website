@@ -5,7 +5,6 @@ import { Check, ExternalLink, Radio, RotateCcw, Trophy, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { burst } from '../lib/burst'
 import { fmtDate, matchDate, NOW, TEAM_BY_ID, type Match } from '../data/season'
-import { MY_TEAM_ID } from '../data/myteam'
 import { TeamBadge } from '../components/ui'
 import { derive, feed, setTarget, type LiveGame, type Side } from './engine'
 import { useLive } from './LiveProvider'
@@ -132,7 +131,7 @@ export function useReportable() {
   const { matches } = useStore()
   const { canReport } = useLive()
   return useMemo(() => {
-    const open = matches.filter((m) => m.home === MY_TEAM_ID && canReport(m))
+    const open = matches.filter((m) => canReport(m))
     const past = open.filter((m) => matchDate(m) < NOW)
     return past.length ? past : open.slice(0, 1)
   }, [matches, canReport])

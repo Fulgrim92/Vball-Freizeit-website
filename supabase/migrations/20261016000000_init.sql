@@ -94,7 +94,8 @@ create table public.profiles (
 
 create table public.team_members (
   team_id  text not null references public.teams on update cascade on delete cascade,
-  user_id  uuid not null references auth.users on delete cascade,
+  -- profiles, not auth.users, so the API can embed names: team_members?select=*,profiles(name)
+  user_id  uuid not null references public.profiles on delete cascade,
   number   smallint check (number between 0 and 99),
   position text check (position in ('Zuspiel', 'Außen', 'Mitte', 'Diagonal', 'Libero')),
   office   text check (length(office) <= 40),
@@ -343,6 +344,17 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
+-- When the result is in, a live game of that match is over.
+create function public.matches_finish_live() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  update live_games set status = 'final', updated_at = now() where match_id = new.id and status = 'live';
+  return null;
+end $$;
+
+create trigger matches_finish_live after update of sets on public.matches
+  for each row when (new.sets is not null and old.sets is null) execute function public.matches_finish_live();
+
 -- ───────────────────────── Row-level security ─────────────────────────
 
 alter table public.leagues        enable row level security;
@@ -442,7 +454,8 @@ grant update (club, venues, slots, contacts)     on public.teams        to authe
 grant update (sets, date, time, venue)           on public.matches      to authenticated;
 grant update (name)                              on public.profiles     to authenticated;
 grant update (number, position, office, rights)  on public.team_members to authenticated;
-grant update (answer, updated_at)                on public.training_rsvps to authenticated;
+-- all columns, because the client upserts (insert … on conflict do update); RLS keeps it to your own row
+grant update (team_id, session_date, user_id, answer, updated_at) on public.training_rsvps to authenticated;
 grant update (status)                            on public.move_requests to authenticated;
 grant update (rallies, status, updated_at, reporter) on public.live_games to authenticated;
 revoke insert, delete on public.leagues, public.teams, public.profiles, public.league_admins from authenticated;

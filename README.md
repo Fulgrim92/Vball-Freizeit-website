@@ -35,6 +35,10 @@ A from-scratch redesign of [volleyball-freizeit.de](https://www.volleyball-freiz
 
 `src/live/` holds the live layer. A game is stored as its list of rallies; score, sets, serve and feed are derived (`engine.ts`), so undo is just dropping the last rally. `transport.ts` defines a `LiveTransport` interface; the demo implementation shares games between tabs with `localStorage` + `BroadcastChannel`. A real backend (websocket, Supabase realtime) implements the same interface and must enforce the „Ergebnisse“ right server-side. Three games from other leagues are simulated from a seed and a shared start time, so every tab shows the same score; they loop every 40 minutes.
 
+## Backend
+
+With `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set (see `.env.example`), the site loads leagues, teams and games from Supabase, uses real accounts (sign-up, password reset, invite codes) and syncs the live ticker over Supabase realtime. Rights are enforced with row-level security. Without the keys it stays the demo above. Setup, rights and tests: [`supabase/README.md`](supabase/README.md).
+
 ## Scripts
 
 ```bash
@@ -42,4 +46,6 @@ npm install
 npm run dev              # local dev server
 npm run build            # type-check + production build to dist/
 npm run build:artifact   # single-file build used for the hosted preview
+npm run test:db          # migrations + seed + RLS tests on a throwaway Postgres
+npm run db:seed          # regenerate supabase/seed.sql from src/data/season.ts
 ```

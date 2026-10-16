@@ -50,10 +50,16 @@ export const SQUAD: Player[] = [
 export const ME = SQUAD[0]
 
 // Spartak Au's real hall time; everything about the squad below is example data.
-const SLOTS = [{ day: 3, start: [20, 0], end: '22:00', venue: 'Pestalozzi-Gymnasium, Eduard-Schmid-Str. 1' }]
+export interface TrainingSlot {
+  day: number
+  start: [number, number]
+  end: string
+  venue: string
+}
+const SLOTS: TrainingSlot[] = [{ day: 3, start: [20, 0], end: '22:00', venue: 'Pestalozzi-Gymnasium, Eduard-Schmid-Str. 1' }]
 const FOCUS = ['Annahme & Abwehr', 'Aufschlagserie', 'Angriff über Außen', 'Block & Sicherung', 'Spielzüge 5-1', 'Freies Spiel', 'Läufer-System', 'Kondition & Sprungkraft']
 
-function sessionsAround(now: Date, before: number, after: number): { past: Session[]; next: Session[] } {
+export function sessionsAround(now: Date, before: number, after: number, slots = SLOTS): { past: Session[]; next: Session[] } {
   const past: Session[] = []
   const next: Session[] = []
   const start = new Date(now)
@@ -63,7 +69,7 @@ function sessionsAround(now: Date, before: number, after: number): { past: Sessi
     const d = new Date(start)
     d.setDate(d.getDate() + i)
     const weekday = (d.getDay() + 6) % 7
-    for (const slot of SLOTS) {
+    for (const slot of slots) {
       if (slot.day !== weekday) continue
       const date = new Date(d)
       date.setHours(slot.start[0], slot.start[1])

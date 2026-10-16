@@ -4,10 +4,10 @@ export type LiveSnapshot = Record<string, LiveGame>
 
 /**
  * Where live games come from and go to. The demo ships a browser-only transport so the
- * prototype works as a static page; a real backend implements the same three calls, e.g.
- * a websocket or a Supabase realtime channel on a `live_games` table. The server side must
- * then check what the client only checks for UX: that the reporter holds the "Ergebnisse"
- * right for the match's home team.
+ * prototype works as a static page; src/backend/remote.ts implements the same calls on a
+ * Supabase realtime channel over the `live_games` table, where row-level security checks
+ * what the client only checks for UX: that the reporter holds the "Ergebnisse" right for
+ * the match's home team.
  */
 export interface LiveTransport {
   load(): LiveSnapshot
@@ -15,6 +15,8 @@ export interface LiveTransport {
   remove(matchId: string): void
   /** called with the full snapshot whenever another tab or device changes something */
   subscribe(cb: (games: LiveSnapshot) => void): () => void
+  /** called when the server refused a write; the snapshot has been reset to the server's state */
+  onError?(cb: (message: string) => void): () => void
 }
 
 const KEY = 'vfm:live'

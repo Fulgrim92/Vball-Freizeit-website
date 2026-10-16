@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useStore } from '../lib/store'
 import { MATCHES, matchDate, NOW, type Match, type SetScore } from '../data/season'
 import { MY_TEAM_ID } from '../data/myteam'
+import { remote } from '../backend'
 import { addPoint, derive, finalSets, simAt, simulateGame, undoPoint, type LiveGame, type Side } from './engine'
 import { createLocalTransport, type LiveSnapshot } from './transport'
 
@@ -22,7 +23,8 @@ interface Live {
 
 const Ctx = createContext<Live | null>(null)
 
-const transport = createLocalTransport()
+const transport = remote ? remote.createSupabaseTransport() : createLocalTransport()
+const DAY = 24 * 3600 * 1000
 
 // Demo games run in a 40 minute loop, shared by all tabs through a stored start time.
 const LOOP = 40 * 60 * 1000
@@ -40,8 +42,9 @@ function simEpoch() {
   return now
 }
 
-/** Three upcoming games from different leagues that are not the demo team's. */
+/** Three upcoming games from different leagues that are not the demo team's; none on the real site. */
 const SIM_MATCHES = (() => {
+  if (remote) return []
   const seen = new Set<string>()
   return MATCHES.filter((m) => {
     if (m.sets || matchDate(m) < NOW || m.home === MY_TEAM_ID || m.away === MY_TEAM_ID || seen.has(m.league)) return false
@@ -53,12 +56,13 @@ const SIM_MATCHES = (() => {
 export const isSimulated = (matchId: string) => SIM_MATCHES.some((m) => m.id === matchId)
 
 export function LiveProvider({ children }: { children: ReactNode }) {
-  const { user, matches, enterResult } = useStore()
+  const { user, team, matches, enterResult, toast } = useStore()
   const [shared, setShared] = useState<LiveSnapshot>(() => transport.load())
   const [now, setNow] = useState(() => Date.now())
   const [epoch, setEpoch] = useState(simEpoch)
 
   useEffect(() => transport.subscribe(setShared), [])
+  useEffect(() => transport.onError?.((text) => toast(text, 'info')), [toast])
   useEffect(() => {
     const t = setInterval(() => {
       const n = Date.now()
@@ -78,9 +82,11 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     return { games: all, upcoming: sims.filter((g) => g.startedAt > now) }
   }, [sims, shared, now])
 
+  // The database allows the same (can_report_live): home team, "Ergebnisse", no result yet, from a day before kickoff.
   const canReport = useCallback(
-    (m: Match) => !!user && user.rights.includes('Ergebnisse') && m.home === MY_TEAM_ID && !m.sets,
-    [user],
+    (m: Match) =>
+      !!user && user.rights.includes('Ergebnisse') && m.home === team?.id && !m.sets && (!remote || +matchDate(m) - Date.now() < DAY),
+    [user, team],
   )
 
   // Every write goes through here so the rights check sits in one place.
@@ -107,6 +113,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     point: (id, side) => update(id, (g) => (g ? addPoint(g, side) : null)),
     undo: (id) => update(id, (g) => (g ? undoPoint(g) : null)),
     finish: (id) => {
+      if (remote) {
+        // one write: the database marks the live game final when the result lands (matches_finish_live)
+        const g = transport.load()[id]
+        const match = matches.find((m) => m.id === id)
+        if (!g || !match || !canReport(match) || !derive(g.rallies).decided) return null
+        const sets = finalSets(g)
+        enterResult(id, sets)
+        return sets
+      }
       const done = update(id, (g) => (g && derive(g.rallies).decided ? { ...g, status: 'final', updatedAt: Date.now() } : null))
       if (!done) return null
       const sets = finalSets(done)

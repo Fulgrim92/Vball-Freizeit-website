@@ -157,7 +157,9 @@ reset role;
 -- ── training ──
 select test.act('player');
 select test.ok('player answers for herself', $q$insert into training_rsvps (team_id, session_date, answer) values ('spartak-au', current_date + 3, 'ja')$q$);
-select test.ok('player changes her answer', $q$update training_rsvps set answer = 'nein' where user_id = auth.uid()$q$);
+select test.ok('player changes her answer', $q$insert into training_rsvps (team_id, session_date, user_id, answer) values ('spartak-au', current_date + 3, auth.uid(), 'nein') on conflict (team_id, session_date, user_id) do update set team_id = excluded.team_id, session_date = excluded.session_date, user_id = excluded.user_id, answer = excluded.answer$q$);
+select test.denied('player cannot move her answer to the captain', $q$update training_rsvps set user_id = test.uid('captain') where user_id = auth.uid()$q$);
+select test.denied('player cannot move her answer to another team', $q$update training_rsvps set team_id = 'kaboom' where user_id = auth.uid()$q$);
 select test.denied('player cannot answer for the captain', $q$insert into training_rsvps (team_id, session_date, user_id, answer) values ('spartak-au', current_date + 3, test.uid('captain'), 'nein')$q$);
 reset role;
 select test.act('outsider');
@@ -189,9 +191,11 @@ reset role;
 select test.act('anon');
 select test.count_is('anyone watches the live game', 'select * from live_games', 1);
 reset role;
--- once the result is in, the live game is frozen
-update matches set sets = '[[25,10],[25,10]]' where id = (select today from g);
+-- once the result is in, the live game is over and frozen
+update matches set date = current_date - 1 where id = (select today from g);
 select test.act('captain');
+select test.ok('captain enters tonight''s result', format($q$update matches set sets = '[[25,10],[25,10]]' where id = %L$q$, (select today from g)));
+select test.count_is('the result ends the live game', format($q$select * from live_games where match_id = %L and status = 'final'$q$, (select today from g)), 1);
 select test.denied('live game is frozen after the result', format($q$update live_games set rallies = '[]' where match_id = %L$q$, (select today from g)));
 reset role;
 

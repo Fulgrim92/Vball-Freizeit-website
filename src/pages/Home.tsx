@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowDown, ArrowRight, CalendarCheck2, Compass, MapPin, MessagesSquare, Pause, Play, Plus, Radio, Trophy, Users } from 'lucide-react'
@@ -23,7 +23,6 @@ import { useLive } from '../live/LiveProvider'
 import { derive } from '../live/engine'
 import { LiveCard, useReportable } from '../live/LiveViews'
 
-const VolleyBall3D = lazy(() => import('../three/VolleyBall3D'))
 
 function Ticker() {
   const { matches } = useStore()
@@ -78,43 +77,58 @@ function Ticker() {
   )
 }
 
-function HeroVideo() {
+/** Showreel frame above table and live panel; a court-line placeholder stands in until the film loads. */
+function Showreel() {
   const [ready, setReady] = useState(false)
   const [paused, setPaused] = useState(false)
   const ref = useRef<HTMLVideoElement>(null)
   const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   return (
-    <>
-      <video
-        ref={ref}
-        className={`hero-video${ready ? ' is-ready' : ''}`}
-        autoPlay={!reduce}
-        muted
-        loop
-        playsInline
-        preload="auto"
-        poster="showreel/showreel-poster.jpg"
-        onLoadedData={() => setReady(true)}
-        aria-hidden
-      >
-        <source src="showreel/showreel-web.webm" type="video/webm" />
-        <source src="showreel/showreel-web.mp4" type="video/mp4" />
-      </video>
-      {ready && (
-        <button
-          className="video-toggle"
-          onClick={() => {
-            const v = ref.current!
-            if (v.paused) v.play()
-            else v.pause()
-            setPaused(v.paused)
-          }}
-          aria-label={paused ? 'Hintergrundvideo abspielen' : 'Hintergrundvideo pausieren'}
+    <motion.figure className={`wrap showreel${ready ? ' is-ready' : ''}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}>
+      <div className="showreel-frame">
+        <div className="showreel-placeholder" aria-hidden>
+          <svg viewBox="0 0 180 90" preserveAspectRatio="xMidYMid slice">
+            <rect x="10" y="10" width="160" height="70" />
+            <line x1="90" y1="6" x2="90" y2="84" className="net" />
+            <line x1="63" y1="10" x2="63" y2="80" />
+            <line x1="117" y1="10" x2="117" y2="80" />
+          </svg>
+          <span className="showreel-ball" />
+        </div>
+        <video
+          ref={ref}
+          autoPlay={!reduce}
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster="showreel/showreel-poster.jpg"
+          onLoadedData={() => setReady(true)}
+          aria-label="Saisonfilm der Freizeitliga"
         >
-          {paused ? <Play size={14} /> : <Pause size={14} />}
-        </button>
-      )}
-    </>
+          <source src="showreel/showreel-web.webm" type="video/webm" />
+          <source src="showreel/showreel-web.mp4" type="video/mp4" />
+        </video>
+        <figcaption>
+          <span className="eyebrow">Saisonfilm</span>
+          <span>{ready ? '20 Sekunden Freizeitliga' : 'Der Film zur Saison kommt in Kürze'}</span>
+        </figcaption>
+        {ready && (
+          <button
+            className="video-toggle"
+            onClick={() => {
+              const v = ref.current!
+              if (v.paused) v.play()
+              else v.pause()
+              setPaused(v.paused)
+            }}
+            aria-label={paused ? 'Video abspielen' : 'Video pausieren'}
+          >
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
+        )}
+      </div>
+    </motion.figure>
   )
 }
 
@@ -130,7 +144,7 @@ function LivePanel() {
   const nextMatch = next && byId.get(next.matchId)
   const s = next ? Math.max(0, Math.round((next.startedAt - now) / 1000)) : 0
   return (
-    <section className="wrap section live-panel" aria-labelledby="live-panel-h" data-step data-tour="live">
+    <section className="live-panel" aria-labelledby="live-panel-h" data-tour="live">
       <div className="panel live-panel-box">
         <div className="section-head">
           <div>
@@ -174,55 +188,27 @@ function LivePanel() {
   )
 }
 
-function Hero({ onTour }: { onTour: () => void }) {
-  const [spikes, setSpikes] = useState(0)
-  const words = ['Pritschen.', 'Baggern.', 'Schmettern.']
+/** Slim intro line above the two headline panels; the showreel plays behind both. */
+function Intro({ onTour }: { onTour: () => void }) {
   return (
-    <section className="hero-band" data-step>
-      <HeroVideo />
-      <div className="hero wrap">
-        <motion.div className="hero-copy" variants={stagger} initial="hidden" animate="show">
-          <motion.p className="eyebrow" variants={rise}>
-            Saison {SEASON} · {LEAGUES.length} Ligen · {TEAMS.length} Mannschaften
-          </motion.p>
-          <motion.h1 className="hero-title" variants={rise}>
-            {words.map((w, i) => (
-              <span key={w} className="hero-word" style={{ '--i': i } as React.CSSProperties}>
-                {w}
-              </span>
-            ))}
-            <span className="hero-sub-title">Feierabend in München.</span>
-          </motion.h1>
-          <motion.p className="lead" variants={rise}>
-            Die Breitensportliga für alle, die nach der Arbeit lieber in der Halle stehen. Tabellen, Spielpläne,
-            Hallenzeiten und die Trainingsplanung deines Teams an einem Ort.
-          </motion.p>
-          <motion.div className="hero-cta" variants={rise}>
-            <a
-              href="#tabelle"
-              className="btn btn-primary"
-              onClick={(e) => {
-                e.preventDefault()
-                document.querySelector('[data-tour="tabelle"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-            >
-              Zur Tabelle <ArrowDown size={18} />
-            </a>
-            <button className="btn btn-ghost" onClick={onTour}>
-              <Compass size={18} /> Tour starten
-            </button>
-          </motion.div>
-        </motion.div>
-        <div className="hero-ball-wrap" onClickCapture={() => setSpikes((n) => n + 1)}>
-          <Suspense fallback={<div className="hero-ball" />}>
-            <VolleyBall3D className="hero-ball" />
-          </Suspense>
-          <p className="ball-hint">
-            {spikes === 0 ? 'Klick auf den Ball zum Schmettern' : spikes < 5 ? `${spikes}× geschmettert` : `${spikes}× geschmettert. Ab ins Training!`}
-          </p>
-        </div>
-      </div>
-    </section>
+    <motion.div className="wrap home-intro" variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={rise}>
+        <p className="eyebrow">
+          Saison {SEASON} · {LEAGUES.length} Ligen · {TEAMS.length} Mannschaften
+        </p>
+        <h1 className="home-title">Freizeitliga Volleyball München</h1>
+      </motion.div>
+      <motion.div className="hero-cta" variants={rise}>
+        <button className="btn btn-primary tour-btn" onClick={onTour}>
+          <Compass size={20} />
+          <span>
+            Tour starten
+            <small>Die Seite in einer Minute</small>
+          </span>
+          <ArrowRight size={18} />
+        </button>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -593,11 +579,16 @@ export default function Home() {
   const tour = useTour()
   return (
     <>
-      <Hero onTour={tour.start} />
-      <LivePanel />
+      <section className="top-stage" data-step>
+        <Intro onTour={tour.start} />
+        <Showreel />
+        <div className="wrap top-grid">
+          <FeaturedTable />
+          <LivePanel />
+        </div>
+      </section>
       <Ticker />
-      <div className="wrap section feature-grid" data-step>
-        <FeaturedTable />
+      <div className="wrap section" data-step>
         <RecentEvents />
       </div>
       <ThisWeek />

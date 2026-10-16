@@ -11,8 +11,8 @@ export interface TourStep {
 
 // Home page tour: each step spotlights a section marked with data-tour="…".
 export const HOME_TOUR: TourStep[] = [
-  { target: 'live', title: 'Live aus den Hallen', text: 'Laufende Spiele mit Spielstand Satz für Satz. Teams melden Punkte direkt vom Handy, alle anderen schauen im Live-Ticker zu.' },
   { target: 'tabelle', title: 'Die Tabelle', text: 'Alle 15 Ligen auf einen Blick. Wechsle die Liga oben, tipp auf ein Team für Hallenzeiten und Ansprechpersonen.' },
+  { target: 'live', title: 'Live aus den Hallen', text: 'Laufende Spiele mit Spielstand Satz für Satz. Teams melden Punkte direkt vom Handy, alle anderen schauen im Live-Ticker zu.' },
   { target: 'events', title: 'Was geschah in den letzten Tagen', text: 'Neue Ergebnisse, Forum, Spielerbörse und Turniere in einer Liste, das Neueste zuerst.' },
   { target: 'woche', title: 'Spiele diese Woche', text: 'Alle Partien der nächsten sieben Tage mit Uhrzeit und Halle. Filtere nach deiner Liga.' },
   { target: 'pyramide', title: 'Auf- und Abstieg', text: 'Die Ligapyramide zeigt, wer in jeder Liga vorne liegt. Ein Tipp öffnet die ganze Tabelle.' },
@@ -53,7 +53,7 @@ export function TourOverlay({ steps, step, setStep }: { steps: TourStep[]; step:
     if (el) {
       const r = el.getBoundingClientRect()
       // keep tall sections below the sticky header, centre short ones
-      const top = window.innerWidth < 760 || r.height > window.innerHeight - 340 ? r.top + window.scrollY - 90 : r.top + window.scrollY - (window.innerHeight - r.height) / 2 + 60
+      const top = window.innerWidth < 760 || window.innerHeight < 520 || r.height > window.innerHeight - 340 ? r.top + window.scrollY - 90 : r.top + window.scrollY - (window.innerHeight - r.height) / 2 + 60
       window.scrollTo({ top, behavior: 'smooth' })
     }
     const t = setTimeout(measure, 450)
@@ -83,7 +83,7 @@ export function TourOverlay({ steps, step, setStep }: { steps: TourStep[]; step:
   // card below the spotlight, else above it, else pinned to the bottom edge over a tall section
   const H = cardH + 8
   const vh = window.innerHeight
-  const narrow = window.innerWidth < 760
+  const narrow = window.innerWidth < 760 || vh < 520
   const cardTop = !rect
     ? vh / 2 - H / 2
     : rect.bottom + pad + 12 + H < vh
@@ -96,7 +96,7 @@ export function TourOverlay({ steps, step, setStep }: { steps: TourStep[]; step:
   const vw = window.innerWidth
   const cardLeft = pinned && rect!.left > 460 ? rect!.left / 2 : pinned && vw - rect!.right > 460 ? rect!.right + (vw - rect!.right) / 2 : vw / 2
   // on phones the card always sits at the bottom edge, the spotlight stays above it
-  const sideTop = narrow ? vh - H - 8 : pinned && cardLeft !== vw / 2 ? vh / 2 - H / 2 : cardTop
+  const sideTop = Math.max(8, Math.min(vh - H - 8, narrow ? vh - H - 8 : pinned && cardLeft !== vw / 2 ? vh / 2 - H / 2 : cardTop))
 
   return (
     <AnimatePresence>

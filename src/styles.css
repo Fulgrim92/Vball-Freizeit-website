@@ -4570,3 +4570,199 @@ td.c-pts b {
     gap: 3px;
   }
 }
+
+/* ---------- home: intro line + table and live side by side ---------- */
+.top-stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding-block: 28px 36px;
+}
+.top-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 35%, transparent), var(--bg) 92%);
+}
+.home-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.home-intro .eyebrow {
+  margin: 0 0 4px;
+}
+.home-title {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.home-intro .hero-cta {
+  margin: 0;
+}
+.top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .top-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+}
+.top-grid .live-panel {
+  padding: 0;
+  min-width: 0;
+}
+.top-grid .live-panel-box {
+  height: 100%;
+}
+.top-grid .live-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 640px) and (max-width: 999px) {
+  .top-grid .live-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (max-width: 559px) {
+  .top-stage {
+    padding-block: 18px 24px;
+  }
+}
+
+/* ---------- showreel frame ---------- */
+.showreel {
+  margin: 0 auto 18px;
+}
+.showreel-frame {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+  height: clamp(200px, 22vw, 290px);
+  max-width: 100%;
+}
+.showreel-frame video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1s var(--ease);
+}
+.showreel.is-ready video {
+  opacity: 1;
+}
+.showreel.is-ready .showreel-placeholder {
+  opacity: 0;
+}
+.showreel-placeholder {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.8s var(--ease);
+  background: radial-gradient(120% 90% at 50% 100%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--surface-solid), color-mix(in srgb, var(--accent) 8%, var(--surface-solid)));
+}
+.showreel-placeholder svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: color-mix(in srgb, var(--fg) 14%, transparent);
+  stroke-width: 0.5;
+}
+.showreel-placeholder .net {
+  stroke: color-mix(in srgb, var(--fg) 30%, transparent);
+  stroke-width: 0.9;
+  stroke-dasharray: 1.5 1;
+}
+.showreel-ball {
+  position: absolute;
+  left: 30%;
+  top: 30%;
+  width: clamp(14px, 2.2vw, 26px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff8d6, var(--ball, #f5c518) 60%, #c98f00);
+  box-shadow: 0 6px 18px color-mix(in srgb, #f5c518 40%, transparent);
+  animation: showreel-arc 3.4s var(--ease) infinite;
+}
+@keyframes showreel-arc {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(18vw, -6%); }
+  100% { transform: translate(0, 0); }
+}
+.showreel-frame figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 28px 18px 12px;
+  font-size: 0.92rem;
+  color: var(--fg-2);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--bg) 80%, transparent), transparent);
+}
+.showreel-frame figcaption .eyebrow {
+  margin: 0;
+}
+.showreel-frame .video-toggle {
+  top: 12px;
+  right: 12px;
+  bottom: auto;
+}
+@media (max-width: 759px) {
+  .showreel-frame {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .showreel-ball {
+    animation: none;
+  }
+}
+
+/* ---------- tour button: the obvious way in ---------- */
+.tour-btn {
+  position: relative;
+  gap: 12px;
+  padding: 12px 20px 12px 18px;
+  text-align: left;
+  line-height: 1.15;
+  font-size: 1.02rem;
+}
+.tour-btn {
+  animation: tour-pulse 2.4s ease-out infinite;
+}
+.tour-btn > span {
+  display: flex;
+  flex-direction: column;
+}
+.tour-btn small {
+  font-size: 0.74rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+@keyframes tour-pulse {
+  0% { box-shadow: 0 6px 20px -8px var(--accent), 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  70%, 100% { box-shadow: 0 6px 20px -8px var(--accent), 0 0 0 14px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-btn {
+    animation: none;
+  }
+}

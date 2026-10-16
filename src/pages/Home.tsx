@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, CalendarCheck2, MapPin, Trophy, Users } from 'lucide-react'
+import { ArrowRight, CalendarCheck2, MapPin, Radio, Trophy, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import {
   computeStandings,
@@ -20,6 +20,7 @@ import { POSTS, TOURNAMENTS } from '../data/community'
 import { CountUp, rise, stagger, TeamBadge } from '../components/ui'
 import { useLive } from '../live/LiveProvider'
 import { derive } from '../live/engine'
+import { LiveCard, useReportable } from '../live/LiveViews'
 
 const VolleyBall3D = lazy(() => import('../three/VolleyBall3D'))
 
@@ -73,6 +74,62 @@ function Ticker() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Front-page panel: running games first, else what just finished or is about to start. */
+function LivePanel() {
+  const { matches, user } = useStore()
+  const { games, upcoming, now } = useLive()
+  const mine = useReportable()
+  const running = games.filter((g) => g.status === 'live')
+  const shown = (running.length ? running : games).slice(0, 2)
+  const byId = new Map(matches.map((m) => [m.id, m]))
+  const next = upcoming[0]
+  const nextMatch = next && byId.get(next.matchId)
+  const s = next ? Math.max(0, Math.round((next.startedAt - now) / 1000)) : 0
+  return (
+    <section className="wrap section live-panel" aria-labelledby="live-panel-h">
+      <div className="panel live-panel-box">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Live aus den Hallen</p>
+            <h2 id="live-panel-h" className="live-h">
+              {running.length > 0 && <i className="live-dot" />}
+              {running.length ? (running.length === 1 ? 'Ein Spiel läuft' : `${running.length} Spiele laufen`) : shown.length ? 'Gerade beendet' : 'Gerade kein Spiel'}
+            </h2>
+          </div>
+          <div className="live-panel-actions">
+            {user && mine.length > 0 && (
+              <Link to="/mein-team" state={{ tab: 'live' }} className="btn btn-ghost btn-sm">
+                <Radio size={16} /> Euer Spiel melden
+              </Link>
+            )}
+            <Link to="/live" className="btn btn-primary btn-sm">
+              {running.length > 2 ? `Alle ${running.length} Live-Spiele` : 'Zum Live-Ticker'} <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+        {shown.length > 0 && (
+          <div className="live-grid">
+            {shown.map((g) => (
+              <LiveCard key={g.matchId} game={g} match={byId.get(g.matchId)!} />
+            ))}
+          </div>
+        )}
+        {nextMatch && (
+          <p className="live-panel-next">
+            <span className="league-tag">L{nextMatch.league}</span>
+            <span>
+              {TEAM_BY_ID.get(nextMatch.home)!.name} – {TEAM_BY_ID.get(nextMatch.away)!.name}
+            </span>
+            <b>
+              Anpfiff in {Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}
+            </b>
+          </p>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -369,6 +426,7 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <LivePanel />
       <Ticker />
       <ThisWeek />
       <Stats />

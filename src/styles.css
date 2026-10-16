@@ -3889,3 +3889,70 @@ td.c-pts b {
     padding-inline: 9px;
   }
 }
+.live-panel {
+  padding-block: 8px 28px;
+}
+.live-panel-box {
+  border-color: color-mix(in srgb, var(--hot) 35%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hot) 6%, var(--surface)), var(--surface) 40%);
+}
+.live-panel-box .section-head {
+  align-items: center;
+  margin-bottom: 16px;
+}
+.live-panel-box .live-h {
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+}
+.live-panel-box .live-card {
+  box-shadow: none;
+  background: var(--surface-solid);
+}
+.live-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.live-panel-next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-size: 0.92rem;
+  color: var(--fg-2);
+}
+.live-panel-next b {
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 559px) {
+  /* on phones the cards are the panel; a second frame would squeeze the team names */
+  .live-panel-box {
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .live-panel-box .live-card {
+    border-color: color-mix(in srgb, var(--hot) 40%, var(--line));
+  }
+  .live-panel-actions,
+  .live-panel-actions .btn {
+    width: 100%;
+  }
+  .live-panel-box .live-card {
+    padding: 12px;
+  }
+}
+@media (max-width: 400px) {
+  .lc-row {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 1.8em) 2.4em;
+    gap: 3px;
+  }
+}

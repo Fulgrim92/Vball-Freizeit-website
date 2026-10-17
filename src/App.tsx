@@ -12,6 +12,7 @@ import Login from './pages/Login'
 import MyTeam from './pages/MyTeam'
 import Live from './pages/Live'
 import { LiveProvider } from './live/LiveProvider'
+import { ResultProposalBar } from './live/LiveViews'
 
 function Routed() {
   const loc = useLocation()
@@ -74,6 +75,7 @@ export default function App() {
           <TabBar />
           <MenuSheet />
           <CommandPalette />
+          <ResultProposalBar />
           <Toasts />
         </HashRouter>
         </LiveProvider>

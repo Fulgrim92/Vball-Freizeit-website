@@ -14,11 +14,19 @@ interface Live {
   game: (matchId: string) => LiveGame | undefined
   now: number
   canReport: (match: Match) => boolean
+  /** the reporter's decided games whose result is not uploaded yet */
+  proposals: Proposal[]
   start: (matchId: string) => void
   point: (matchId: string, side: Side) => void
   undo: (matchId: string) => void
   finish: (matchId: string) => SetScore[] | null
   cancel: (matchId: string) => void
+}
+
+export interface Proposal {
+  game: LiveGame
+  match: Match
+  sets: SetScore[]
 }
 
 const Ctx = createContext<Live | null>(null)
@@ -89,6 +97,26 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     [user, team],
   )
 
+  const proposals = useMemo(
+    () =>
+      games.flatMap((g) => {
+        const match = matches.find((m) => m.id === g.matchId)
+        if (g.source !== 'team' || g.status !== 'live' || !match || !canReport(match)) return []
+        const st = derive(g.rallies)
+        return st.decided ? [{ game: g, match, sets: st.sets }] : []
+      }),
+    [games, matches, canReport],
+  )
+
+  // Demo stand-in for the database trigger matches_finish_live: once a result is in, however it
+  // was entered, the live game is over.
+  useEffect(() => {
+    if (remote) return
+    for (const g of Object.values(shared)) {
+      if (g.status === 'live' && matches.find((m) => m.id === g.matchId)?.sets) transport.publish({ ...g, status: 'final', updatedAt: Date.now() })
+    }
+  }, [shared, matches])
+
   // Every write goes through here so the rights check sits in one place.
   const update = (matchId: string, fn: (g: LiveGame | undefined) => LiveGame | null) => {
     const match = matches.find((m) => m.id === matchId)
@@ -104,6 +132,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     game: (id) => games.find((g) => g.matchId === id),
     now,
     canReport,
+    proposals,
     start: (id) =>
       update(id, (g) => {
         if (g?.status === 'live') return null

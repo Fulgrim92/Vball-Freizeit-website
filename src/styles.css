@@ -4770,3 +4770,70 @@ td.c-pts b {
     animation: none;
   }
 }
+
+/* result proposal once a live game is decided */
+.lc-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--r);
+  background: var(--win-2);
+  overflow: hidden;
+}
+.lc-proposal p {
+  font-size: 0.92rem;
+}
+.lc-proposal-actions,
+.pb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.proposal-bar {
+  position: fixed;
+  z-index: 85;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tabbar-h) + 16px);
+  margin-inline: auto;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--win) 45%, var(--line));
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+}
+.proposal-bar .eyebrow {
+  color: var(--win);
+  margin-bottom: 4px;
+}
+.pb-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+@media (max-width: 559px) {
+  .pb-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+.live-suggest {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.9rem;
+  background: var(--win-2);
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+}
+.live-suggest > svg {
+  color: var(--win);
+  flex-shrink: 0;
+}

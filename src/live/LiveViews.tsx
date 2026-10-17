@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, ExternalLink, Radio, RotateCcw, Trophy, X } from 'lucide-react'
+import { Check, ExternalLink, PencilLine, Radio, RotateCcw, Trophy, Upload, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { burst } from '../lib/burst'
-import { fmtDate, matchDate, NOW, TEAM_BY_ID, type Match } from '../data/season'
+import { fmtDate, matchDate, NOW, setsWon, TEAM_BY_ID, type Match } from '../data/season'
 import { TeamBadge } from '../components/ui'
 import { derive, feed, setTarget, type LiveGame, type Side } from './engine'
-import { useLive } from './LiveProvider'
+import { useLive, type Proposal } from './LiveProvider'
 
 export function ago(t: number, now: number) {
   const s = Math.max(0, Math.round((now - t) / 1000))
@@ -31,9 +31,47 @@ function Num({ value, className }: { value: number | string; className?: string 
   )
 }
 
+/** Upload the final score of a decided live game; the store sends it through the backend's rights check. */
+function useUpload() {
+  const live = useLive()
+  const { toast } = useStore()
+  return (p: Proposal, from: Element | null) => {
+    const sets = live.finish(p.match.id)
+    if (!sets) return toast('Das Ergebnis konnte nicht übernommen werden.', 'info')
+    const [h, a] = setsWon(sets)
+    burst(from, 30)
+    toast(`Ergebnis ${h}:${a} hochgeladen. Die Tabelle ist aktualisiert.`)
+  }
+}
+
+const setList = (sets: [number, number][]) => sets.map(([h, a]) => `${h}:${a}`).join(', ')
+
+/** Shown in a decided game's card to whoever may upload its result. */
+function ProposalBox({ p }: { p: Proposal }) {
+  const upload = useUpload()
+  const btn = useRef<HTMLButtonElement>(null)
+  const [h, a] = setsWon(p.sets)
+  return (
+    <motion.div className="lc-proposal" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+      <p>
+        <b>Spiel vorbei.</b> Ergebnis {h}:{a} ({setList(p.sets)}) hochladen?
+      </p>
+      <div className="lc-proposal-actions">
+        <button ref={btn} className="btn btn-primary btn-sm" onClick={() => upload(p, btn.current)}>
+          <Upload size={15} /> Hochladen
+        </button>
+        <Link to="/mein-team" state={{ tab: 'ergebnis', match: p.match.id }} className="btn btn-ghost btn-sm">
+          <PencilLine size={15} /> Prüfen
+        </Link>
+      </div>
+    </motion.div>
+  )
+}
+
 /** Scoreboard card for one game on the ticker. */
 export function LiveCard({ game, match }: { game: LiveGame; match: Match }) {
-  const { now } = useLive()
+  const { now, proposals } = useLive()
+  const proposal = proposals.find((p) => p.game.matchId === game.matchId)
   const [open, setOpen] = useState(false)
   const st = derive(game.rallies)
   const live = game.status === 'live'
@@ -99,6 +137,7 @@ export function LiveCard({ game, match }: { game: LiveGame; match: Match }) {
           </motion.p>
         )}
       </AnimatePresence>
+      {proposal && <ProposalBox p={proposal} />}
       {events.length > 0 && (
         <ol className="lc-feed">
           <AnimatePresence initial={false}>
@@ -356,5 +395,75 @@ export function LiveConsole() {
         )}
       </div>
     </section>
+  )
+}
+
+const DISMISSED = 'vfm:proposal-later'
+const proposalKey = (p: Proposal) => `${p.match.id}:${p.game.rallies.length}`
+
+/**
+ * Site-wide prompt once the reporter's game is decided, so the result does not get lost when
+ * the score console is closed. "Später" hides it until the score changes again.
+ */
+export function ResultProposalBar() {
+  const { proposals } = useLive()
+  const loc = useLocation()
+  const nav = useNavigate()
+  const upload = useUpload()
+  const btn = useRef<HTMLButtonElement>(null)
+  const [later, setLater] = useState<string[]>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(DISMISSED) || '[]')
+    } catch {
+      return []
+    }
+  })
+  // Mein Team has its own finish step in the console and the result form
+  const p = loc.pathname.startsWith('/mein-team') ? undefined : proposals.find((x) => !later.includes(proposalKey(x)))
+  const dismiss = (key: string) => {
+    const next = [...later, key]
+    setLater(next)
+    try {
+      sessionStorage.setItem(DISMISSED, JSON.stringify(next))
+    } catch {
+      /* ignore */
+    }
+  }
+  return (
+    <AnimatePresence>
+      {p && (
+        <motion.aside
+          key={p.match.id}
+          className="proposal-bar"
+          role="status"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+        >
+          <div className="pb-text">
+            <p className="eyebrow">Ergebnis bereit</p>
+            <p>
+              <b>
+                {TEAM_BY_ID.get(p.match.home)!.name} {setsWon(p.sets)[0]}:{setsWon(p.sets)[1]} {TEAM_BY_ID.get(p.match.away)!.name}
+              </b>{' '}
+              <span className="muted">({setList(p.sets)})</span>
+            </p>
+            <p className="muted small">Das Live-Spiel ist entschieden. Jetzt als Ergebnis hochladen?</p>
+          </div>
+          <div className="pb-actions">
+            <button ref={btn} className="btn btn-primary btn-sm" onClick={() => upload(p, btn.current)}>
+              <Upload size={15} /> Hochladen
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => nav('/mein-team', { state: { tab: 'ergebnis', match: p.match.id } })}>
+              <PencilLine size={15} /> Prüfen
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => dismiss(proposalKey(p))}>
+              Später
+            </button>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
   )
 }

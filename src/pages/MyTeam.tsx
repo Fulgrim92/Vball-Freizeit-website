@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, CircleHelp, Clock, Lock, LogIn, MapPin, Minus, Plus, Send, ShieldCheck, Target, UserPlus, X } from 'lucide-react'
+import { Check, CircleHelp, Clock, Lock, LogIn, MapPin, Minus, Plus, Radio, Send, ShieldCheck, Target, UserPlus, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { burst } from '../lib/burst'
 import { computeStandings, fmtDate, matchDate, NOW, setsWon, TEAM_BY_ID, WEEKDAYS_LONG, weekdayOf, type Match, type SetScore } from '../data/season'
 import { ALL_RIGHTS, MIN_PLAYERS, type Right, type Rsvp, type Session } from '../data/myteam'
 import { CountUp, FormDots, Segmented, TeamBadge } from '../components/ui'
 import { LiveConsole } from '../live/LiveViews'
+import { useLive } from '../live/LiveProvider'
 
 const initials = (n: string) => n.split(' ').map((p) => p[0]).join('')
 
@@ -286,18 +287,32 @@ function ResultEntry() {
 function ResultForm() {
   const { matches, enterResult, toast, backend } = useStore()
   const { id: MY_TEAM_ID, team: MY_TEAM } = useTeam()
+  const { proposals } = useLive()
+  const loc = useLocation()
   const candidates = useMemo(() => {
     const home = matches.filter((m) => m.home === MY_TEAM_ID && !m.sets)
     const past = home.filter((m) => matchDate(m) < new Date())
     // the demo lends you the next home game to try it out; the database only takes played games
-    return past.length || backend !== 'demo' ? past : home.slice(0, 1)
-  }, [matches, MY_TEAM_ID, backend])
-  const [matchId, setMatchId] = useState(candidates[0]?.id ?? '')
-  const [sets, setSets] = useState<SetScore[]>([
-    [25, 21],
-    [22, 25],
-    [15, 12],
-  ])
+    const base = past.length || backend !== 'demo' ? past : home.slice(0, 1)
+    // games decided in the live ticker are always on offer
+    return [...base, ...proposals.map((p) => p.match).filter((m) => !base.some((b) => b.id === m.id))]
+  }, [matches, MY_TEAM_ID, backend, proposals])
+  const liveSets = (id: string): SetScore[] | undefined => {
+    const p = proposals.find((x) => x.match.id === id)
+    return p && [...p.sets, ...(Array.from({ length: 3 - p.sets.length }, () => [0, 0]) as SetScore[])]
+  }
+  const [matchId, setMatchId] = useState(() => {
+    const wanted = (loc.state as { match?: string } | null)?.match
+    return candidates.find((m) => m.id === wanted)?.id ?? proposals[0]?.match.id ?? candidates[0]?.id ?? ''
+  })
+  const [sets, setSets] = useState<SetScore[]>(
+    () =>
+      liveSets(matchId) ?? [
+        [25, 21],
+        [22, 25],
+        [15, 12],
+      ],
+  )
   const btn = useRef<HTMLButtonElement>(null)
   const match = matches.find((m) => m.id === matchId) as Match | undefined
 
@@ -320,6 +335,8 @@ function ResultForm() {
   const before = computeStandings(MY_TEAM.league, matches).findIndex((r) => r.team.id === MY_TEAM_ID) + 1
   const after = valid ? computeStandings(MY_TEAM.league, matches.map((m) => (m.id === match.id ? { ...m, sets: used } : m))).findIndex((r) => r.team.id === MY_TEAM_ID) + 1 : before
   const preview = matchDate(match) > NOW
+  const proposed = proposals.find((p) => p.match.id === match.id)?.sets
+  const matchesLive = !!proposed && JSON.stringify(proposed) === JSON.stringify(used)
 
   return (
     <section className="panel result-panel">
@@ -329,7 +346,15 @@ function ResultForm() {
           <p className="muted small">Du hast das Recht „Ergebnisse“ und darfst Heimspiele von {MY_TEAM.name} eintragen.</p>
         </div>
         {candidates.length > 1 && (
-          <select id="result-match" value={matchId} onChange={(e) => setMatchId(e.target.value)}>
+          <select
+            id="result-match"
+            value={matchId}
+            onChange={(e) => {
+              setMatchId(e.target.value)
+              const fromLive = liveSets(e.target.value)
+              if (fromLive) setSets(fromLive)
+            }}
+          >
             {candidates.map((m) => (
               <option key={m.id} value={m.id}>
                 Spiel {m.no} · {fmtDate(matchDate(m))}
@@ -338,7 +363,20 @@ function ResultForm() {
           </select>
         )}
       </div>
-      {preview && <p className="note">Noch kein Heimspiel offen. Zum Ausprobieren nutzt die Demo euer nächstes Heimspiel.</p>}
+      {preview && !proposed && <p className="note">Noch kein Heimspiel offen. Zum Ausprobieren nutzt die Demo euer nächstes Heimspiel.</p>}
+      {proposed && (
+        <p className="live-suggest">
+          <Radio size={16} />
+          <span>
+            Vorschlag aus dem Live-Ticker: <b>{setsWon(proposed).join(':')}</b> ({proposed.map(([h, a]) => `${h}:${a}`).join(', ')})
+          </span>
+          {!matchesLive && (
+            <button type="button" className="link" onClick={() => setSets(liveSets(match.id)!)}>
+              Live-Stand übernehmen
+            </button>
+          )}
+        </p>
+      )}
       <form
         className="score-form"
         onSubmit={(e) => {

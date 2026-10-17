@@ -117,7 +117,7 @@ function Showreel() {
         </video>
         <figcaption>
           <span className="eyebrow">Saisonfilm</span>
-          <span>{ready || poster ? 'Die Freizeitliga in 18 Sekunden' : 'Der Film zur Saison kommt in Kürze'}</span>
+          <span>{ready || poster ? 'Die Freizeitliga in 40 Sekunden' : 'Der Film zur Saison kommt in Kürze'}</span>
         </figcaption>
         {ready && (
           <button

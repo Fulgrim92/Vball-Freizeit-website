@@ -4770,3 +4770,27 @@ td.c-pts b {
     animation: none;
   }
 }
+
+/* Seite unterstützen */
+.support-btn svg {
+  flex: none;
+}
+.footer-support {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.footer-row .footer-support .muted {
+  margin-top: 0;
+}
+.support-panel .btn {
+  width: 100%;
+}
+.sheet-support {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 650;
+}

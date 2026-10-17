@@ -24,6 +24,7 @@ import { useStore } from '../lib/store'
 import { useLive } from '../live/LiveProvider'
 import { LEAGUES, TEAMS } from '../data/season'
 import { Segmented, TeamBadge } from './ui'
+import { SupportButton } from './Support'
 
 export function Logo() {
   return (
@@ -263,6 +264,10 @@ export function MenuSheet() {
               <span>Farbschema</span>
               <ThemeSegment />
             </div>
+            <div className="sheet-support">
+              <span>Seite am Laufen halten</span>
+              <SupportButton label="Unterstützen" />
+            </div>
             <div className="sheet-account">
               {user ? (
                 <>
@@ -429,7 +434,11 @@ export function Footer() {
           <Link to="/infos#kontakt">Kontakt</Link>
           <Link to="/infos#impressum">Impressum / Datenschutz</Link>
         </div>
-        <p className="muted small">© 2000 – 2026 · Entwurf eines Redesigns mit Beispieldaten</p>
+        <div className="footer-support">
+          <p className="muted small">Die Seite läuft ehrenamtlich. Ein Kaffee hilft, Server und Domain zu bezahlen.</p>
+          <SupportButton />
+          <p className="muted small">© 2000 – 2026 · Entwurf eines Redesigns mit Beispieldaten</p>
+        </div>
       </div>
     </footer>
   )

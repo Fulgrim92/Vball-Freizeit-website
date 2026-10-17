@@ -5,6 +5,7 @@ import { useStore } from '../lib/store'
 import { DOCUMENTS, EVENTS, FAQ, POSTS, TOURNAMENTS } from '../data/community'
 import { fmtDate, fmtShort, NOW, relativeDay, weekdayOf } from '../data/season'
 import { PageHead, Segmented, rise, stagger } from '../components/ui'
+import { SupportButton } from '../components/Support'
 
 export function Termine() {
   const { toast } = useStore()
@@ -164,6 +165,14 @@ export function Infos() {
             <h2 className="panel-title">Kontakt</h2>
             <p className="muted">Staffelleitung Freizeitliga, Kreis München</p>
             <p className="mono small selectable">staffelleitung@example.org</p>
+          </section>
+          <section className="panel support-panel" id="unterstuetzen">
+            <h2 className="panel-title">Seite unterstützen</h2>
+            <p className="muted">
+              Die Freizeitliga-Seite wird ehrenamtlich betrieben. Server, Datenbank und Domain kosten trotzdem Geld. Wenn dir die Seite hilft, spendier uns
+              einen Kaffee. Jeder Beitrag ist freiwillig.
+            </p>
+            <SupportButton className="btn btn-primary" label="Einen Kaffee spendieren" />
           </section>
           <section className="panel" id="impressum">
             <h2 className="panel-title">Impressum / Datenschutz</h2>
